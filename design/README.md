@@ -25,13 +25,18 @@ Tous dérivés du logo LB’XMB :
 |---|---|---|
 | `assets/images/icon.png` | 1024×1024, **sans alpha** | Icône iOS et Android historique |
 | `assets/images/adaptive-icon.png` | 1024×1024, alpha | Avant-plan Android, logo à 60 % pour la zone sûre |
-| `assets/images/splash-icon.png` | 720×418, alpha | Écran de lancement, affiché à 220 dp |
+| `assets/images/splash-icon.png` | 1024×1024, alpha | Écran de lancement, logo à 55 % du carré |
 | `assets/images/logo.png` | 640×372, alpha | Wordmark dans l’application |
 | `design/store/feature-graphic.png` | 1024×500, sans alpha | Bannière Google Play |
 
 L’icône iOS ne doit **jamais** avoir de canal alpha : le fond `#07080B` y est
 aplati. L’avant-plan adaptatif Android, lui, garde sa transparence et réserve le
 tiers extérieur, masqué par le système.
+
+Même contrainte pour l’écran de lancement : Android 12 et suivants découpent
+l’icône de démarrage dans un cercle. Le wordmark, très large, doit donc rester
+au centre d’un canvas carré plutôt que d’en occuper toute la largeur, sinon ses
+extrémités sont rognées.
 
 ## Couleurs
 

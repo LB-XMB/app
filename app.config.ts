@@ -80,7 +80,9 @@ const config: ExpoConfig = {
       'expo-splash-screen',
       {
         image: './assets/images/splash-icon.png',
-        imageWidth: 220,
+        // The asset is square with internal padding, so the visible wordmark is
+        // roughly 55 % of this width once Android has applied its circular mask.
+        imageWidth: 240,
         resizeMode: 'contain',
         backgroundColor: '#07080B',
         dark: {

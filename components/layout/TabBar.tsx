@@ -1,13 +1,7 @@
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Box, House, Search, UserPen, type LucideIcon } from 'lucide-react-native';
-import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import Reanimated, {
-  useAnimatedStyle,
-  useDerivedValue,
-  withSpring,
-} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
@@ -24,23 +18,10 @@ const ROUTE_ICONS: Record<string, LucideIcon> = {
   profil: UserPen,
 };
 
-const SPRING = { damping: 20, stiffness: 240, mass: 0.7 };
-
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { colors, scheme } = useTheme();
   const insets = useSafeAreaInsets();
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
-  const [trackWidth, setTrackWidth] = useState(0);
-
-  const tabWidth = trackWidth > 0 ? trackWidth / state.routes.length : 0;
-  const indicatorOffset = useDerivedValue(() =>
-    withSpring(state.index * tabWidth, SPRING)
-  );
-
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorOffset.value }],
-    width: tabWidth,
-  }));
 
   return (
     <View
@@ -64,13 +45,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           ]}
         />
 
-        <View style={styles.track} onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}>
-          {tabWidth > 0 ? (
-            <Reanimated.View style={[styles.indicatorSlot, indicatorStyle]}>
-              <View style={[styles.indicator, { backgroundColor: `${colors.primary}24` }]} />
-            </Reanimated.View>
-          ) : null}
-
+        <View style={styles.track}>
           {state.routes.map((route, index) => {
             const Icon = ROUTE_ICONS[route.name] ?? House;
             const isFocused = state.index === index;
@@ -150,18 +125,6 @@ const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
     paddingVertical: 9,
-  },
-  indicatorSlot: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  indicator: {
-    width: 58,
-    height: 38,
-    borderRadius: radius.pill,
   },
   tab: {
     flex: 1,
