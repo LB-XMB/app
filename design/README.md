@@ -17,6 +17,22 @@ Le langage visuel reprend celui de [Papillon](https://github.com/PapillonApp/Pap
 fond sombre profond, cartes aérées bordées d’un filet clair, coins très arrondis en
 `continuous`, typographie affirmée et animations ressort discrètes.
 
+## Assets générés
+
+Tous dérivés du logo LB’XMB :
+
+| Fichier | Format | Usage |
+|---|---|---|
+| `assets/images/icon.png` | 1024×1024, **sans alpha** | Icône iOS et Android historique |
+| `assets/images/adaptive-icon.png` | 1024×1024, alpha | Avant-plan Android, logo à 60 % pour la zone sûre |
+| `assets/images/splash-icon.png` | 720×418, alpha | Écran de lancement, affiché à 220 dp |
+| `assets/images/logo.png` | 640×372, alpha | Wordmark dans l’application |
+| `design/store/feature-graphic.png` | 1024×500, sans alpha | Bannière Google Play |
+
+L’icône iOS ne doit **jamais** avoir de canal alpha : le fond `#07080B` y est
+aplati. L’avant-plan adaptatif Android, lui, garde sa transparence et réserve le
+tiers extérieur, masqué par le système.
+
 ## Couleurs
 
 Définies dans `ui/theme/palette.ts`, alignées sur les tokens du site

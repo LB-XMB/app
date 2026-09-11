@@ -60,7 +60,7 @@ export default function WelcomeScreen() {
           entering={FadeInDown.duration(520).springify().damping(18)}
           style={styles.hero}
         >
-          <Logo width={92} />
+          <Logo width={124} />
           <Typography variant="display" align="center" style={styles.heroTitle}>
             Bienvenue sur{'\n'}LB’XMB
           </Typography>
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   heroTitle: {
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   choices: {
     gap: spacing.md,
