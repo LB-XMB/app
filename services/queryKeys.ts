@@ -1,4 +1,4 @@
-import type { ResourceQuery } from '@/services/api';
+import type { ForumThreadListQuery, ResourceQuery } from '@/services/api';
 
 /** Single source of truth for react-query cache keys. */
 export const queryKeys = {
@@ -11,4 +11,17 @@ export const queryKeys = {
   guides: ['guides', 'list'] as const,
   guide: (id: string) => ['guides', 'detail', id] as const,
   search: (query: string) => ['search', query] as const,
+  forumCategories: ['forum', 'categories'] as const,
+  forumConsoleTags: ['forum', 'tags', 'console'] as const,
+  /** Prefix shared by every thread list, to invalidate them in one call. */
+  forumThreadLists: ['forum', 'threads'] as const,
+  forumThreads: (query: ForumThreadListQuery) => ['forum', 'threads', query] as const,
+  /** Prefix covering the detail and the reactions of a thread, all viewers included. */
+  forumThreadRoot: (id: string) => ['forum', 'thread', id] as const,
+  // Both payloads depend on the viewer (own likes, follower-only threads).
+  forumThread: (id: string, viewerId: string) =>
+    ['forum', 'thread', id, 'detail', viewerId] as const,
+  forumThreadReactions: (id: string, viewerId: string) =>
+    ['forum', 'thread', id, 'reactions', viewerId] as const,
+  news: ['news', 'feed'] as const,
 };

@@ -5,8 +5,9 @@ name: iOS
 # and produces an unsigned IPA meant to be sideloaded (AltStore, SideStore,
 # TrollStore) or re-signed locally with Sideloadly.
 #
-# The resulting file is attached to the matching Forgejo release when
-# FORGEJO_TOKEN is available, and always kept as a workflow artifact.
+# The IPA is published on the GitHub release of the same tag. The Forgejo
+# pipeline then downloads it from there and attaches it to its own release,
+# which avoids sending anything from this runner to git.lbxmb.fr.
 on:
   push:
     tags:
@@ -17,9 +18,6 @@ on:
         description: "Version to build, for example 1.0.2"
         required: true
 
-env:
-  FORGEJO_API: https://git.lbxmb.fr/api/v1/repos/lbxmb/app
-
 jobs:
   ipa:
     # Forgejo also reads .github/workflows; this keeps it from queueing a job
@@ -27,6 +25,8 @@ jobs:
     if: ${{ github.server_url == 'https://github.com' }}
     runs-on: macos-latest
     timeout-minutes: 60
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -109,39 +109,20 @@ jobs:
             ${{ steps.package.outputs.name }}.sha256
           if-no-files-found: error
 
-      - name: Attach the IPA to the Forgejo release
+      # Handing the file over through the GitHub release lets the Forgejo runner
+      # pull it from its own network, instead of pushing it across from here.
+      - name: Publish the IPA on the GitHub release
         if: ${{ github.event_name == 'push' }}
         env:
-          TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NAME: ${{ steps.package.outputs.name }}
           TAG: v${{ steps.meta.outputs.version }}
         run: |
           set -eu
-          if [ -z "${TOKEN:-}" ]; then
-            echo "::warning::FORGEJO_TOKEN is not set; the IPA stays a GitHub artifact."
-            exit 0
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes "IPA non signée, à installer avec AltStore, SideStore, TrollStore ou Sideloadly."
           fi
-
-          # The Forgejo workflow creates the release in parallel, so give it
-          # time to appear before giving up.
-          ID=""
-          for _ in $(seq 1 20); do
-            ID="$(curl -sS "$FORGEJO_API/releases/tags/$TAG" \
-              -H "Authorization: token $TOKEN" \
-              | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
-            [ -n "$ID" ] && break
-            echo "Release $TAG not published yet, waiting."
-            sleep 30
-          done
-
-          if [ -z "$ID" ]; then
-            echo "::error::No Forgejo release found for $TAG."
-            exit 1
-          fi
-
-          for FILE in "$NAME" "$NAME.sha256"; do
-            curl -sS --fail-with-body -X POST "$FORGEJO_API/releases/$ID/assets?name=$FILE" \
-              -H "Authorization: token $TOKEN" \
-              -F "attachment=@$FILE" > /dev/null
-            echo "Uploaded $FILE"
-          done
+          gh release upload "$TAG" "$NAME" "$NAME.sha256" --clobber
+          echo "Published $NAME on the $TAG release."

@@ -10,7 +10,7 @@ import {
   Tag,
   Users,
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderAction, ScreenHeader } from '@/components/layout/ScreenHeader';
 import { DownloadSheet } from '@/components/resources/DownloadSheet';
 import { MediaGallery } from '@/components/resources/MediaGallery';
+import { buildMediaItems } from '@/components/resources/mediaItems';
 import { ResourceIcon } from '@/components/resources/ResourceIcon';
 import { useResource } from '@/hooks/useResources';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
@@ -50,6 +51,18 @@ export default function ResourceDetailScreen() {
   const toggleFavorite = useFavoritesStore((state) => state.toggle);
 
   const tint = platformColor(resource?.platform);
+
+  const mediaItems = useMemo(
+    () =>
+      resource
+        ? buildMediaItems({
+            media: resource.media,
+            youtubeUrl: resource.youtubeUrl,
+            cacheKey: resource.logoVersion,
+          })
+        : [],
+    [resource]
+  );
 
   const onDownload = async () => {
     if (!resource) return;
@@ -228,12 +241,12 @@ export default function ResourceDetailScreen() {
           </View>
         ) : null}
 
-        {resource.media.length > 0 ? (
+        {mediaItems.length > 0 ? (
           <View style={styles.sectionNoPadding}>
             <View style={styles.section}>
               <ListSectionTitle>Aperçu</ListSectionTitle>
             </View>
-            <MediaGallery media={resource.media} cacheKey={resource.logoVersion} />
+            <MediaGallery items={mediaItems} />
           </View>
         ) : null}
 

@@ -22,6 +22,33 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       release_id: ${{ steps.release.outputs.id }}
     steps:
+      # Whoever owns the token that calls the API becomes the author of the
+      # release. The automatic GITHUB_TOKEN of Actions has no user behind it,
+      # so releases created with it are attributed to Ghost. RELEASE_TOKEN is a
+      # personal access token, which is what puts a real name on the release.
+      - name: Check the release token
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::RELEASE_TOKEN is missing. Create a personal access token on"
+            echo "::error::$GITHUB_SERVER_URL/user/settings/applications with the"
+            echo "::error::write:repository scope, then add it to this repository as a"
+            echo "::error::secret named RELEASE_TOKEN."
+            exit 1
+          fi
+          WHO="$(curl -sS "$GITHUB_SERVER_URL/api/v1/user" \
+            -H "Authorization: token $TOKEN" \
+            | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+                try { console.log(JSON.parse(d).login ?? ""); } catch { console.log(""); }
+              })')"
+          if [ -z "$WHO" ]; then
+            echo "::error::RELEASE_TOKEN was rejected by $GITHUB_SERVER_URL."
+            exit 1
+          fi
+          echo "Releases will be authored by $WHO."
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -67,7 +94,7 @@ jobs:
       - name: Create or reuse the Forgejo release
         id: release
         env:
-          TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           set -eu
           API="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases"
@@ -180,12 +207,66 @@ jobs:
 
       - name: Upload the APK to the release
         env:
-          TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           set -eu
           NAME="lbxmb_${APP_VERSION}_android.apk"
           cp android/app/build/outputs/apk/release/app-release.apk "$NAME"
           sha256sum "$NAME" > "$NAME.sha256"
+          API="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases/${{ needs.release.outputs.release_id }}/assets"
+          for FILE in "$NAME" "$NAME.sha256"; do
+            curl -sS --fail-with-body -X POST "$API?name=$FILE" \
+              -H "Authorization: token $TOKEN" \
+              -F "attachment=@$FILE" > /dev/null
+            echo "Uploaded $FILE"
+          done
+
+  # The IPA is built by .github/workflows/ios.yml on a macOS runner and lands on
+  # the GitHub release. This job brings it back here. It waits for the Android
+  # build first, which gives the macOS job the fifteen minutes it needs.
+  ios:
+    needs: [release, android]
+    runs-on: docker
+    container:
+      image: node:22-bookworm
+    env:
+      APP_VERSION: ${{ needs.release.outputs.version }}
+      MIRROR: https://github.com/LB-XMB/app
+    steps:
+      - name: Fetch the IPA from the GitHub mirror
+        run: |
+          set -eu
+          NAME="lbxmb_${APP_VERSION}_ios-unsigned.ipa"
+          BASE="$MIRROR/releases/download/v$APP_VERSION"
+
+          for FILE in "$NAME" "$NAME.sha256"; do
+            DOWNLOADED=no
+            for attempt in $(seq 1 40); do
+              CODE="$(curl -sL --max-time 600 -o "$FILE" -w '%{http_code}' "$BASE/$FILE")"
+              if [ "$CODE" = "200" ]; then
+                DOWNLOADED=yes
+                echo "Got $FILE after $attempt attempt(s)."
+                break
+              fi
+              rm -f "$FILE"
+              echo "$FILE is not published yet (HTTP $CODE), waiting."
+              sleep 30
+            done
+            if [ "$DOWNLOADED" = "no" ]; then
+              echo "::error::The macOS build never published $FILE."
+              exit 1
+            fi
+          done
+
+          sha256sum -c "$NAME.sha256"
+          ls -lh "$NAME"
+
+      - name: Upload the IPA to the release
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -eu
+          NAME="lbxmb_${APP_VERSION}_ios-unsigned.ipa"
           API="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases/${{ needs.release.outputs.release_id }}/assets"
           for FILE in "$NAME" "$NAME.sha256"; do
             curl -sS --fail-with-body -X POST "$API?name=$FILE" \

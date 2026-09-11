@@ -7,10 +7,12 @@ import { CreatorsRow } from '@/components/home/CreatorsRow';
 import { PopularCarousel } from '@/components/home/PopularCarousel';
 import { StatsGrid } from '@/components/home/StatsGrid';
 import { GuideRow } from '@/components/guides/GuideRow';
+import { NewsRow } from '@/components/forum/NewsRow';
 import { ResourceRow } from '@/components/resources/ResourceRow';
 import { ResourceRowSkeleton } from '@/components/resources/ResourceSkeleton';
 import { useGuides } from '@/hooks/useGuides';
 import { useHome } from '@/hooks/useHome';
+import { useNewsHighlights } from '@/hooks/useNews';
 import { useResourcePage } from '@/hooks/useResources';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import {
@@ -29,12 +31,15 @@ export default function HomeScreen() {
   const home = useHome();
   const recent = useResourcePage({ sort: 'recent', limit: 5 });
   const guides = useGuides();
+  const news = useNewsHighlights(4);
 
-  const refreshing = home.isRefetching || recent.isRefetching || guides.isRefetching;
+  const refreshing =
+    home.isRefetching || recent.isRefetching || guides.isRefetching || news.isRefetching;
   const refresh = () => {
     void home.refetch();
     void recent.refetch();
     void guides.refetch();
+    void news.refetch();
   };
 
   const latestGuides = (guides.data ?? [])
@@ -83,6 +88,22 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <StatsGrid stats={home.data?.stats} loading={home.isLoading} />
         </View>
+
+        {(news.data?.length ?? 0) > 0 ? (
+          <View style={[styles.section, styles.sectionGap]}>
+            <SectionHeader
+              title="Actualités"
+              subtitle="La communauté"
+              actionLabel="Tout voir"
+              onAction={() => router.push('/actualites')}
+            />
+            <View style={styles.rows}>
+              {news.data?.map((item, index) => (
+                <NewsRow key={item.id} item={item} delay={index * 40} />
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         {home.isError && !home.data ? (
           <ErrorState error={home.error} onRetry={() => void home.refetch()} />

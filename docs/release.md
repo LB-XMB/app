@@ -38,31 +38,56 @@ Le même tag déclenche deux pipelines, sur deux forges différentes.
 | `.forgejo/workflows/release.yml` | Forgejo | Crée la release, construit et publie l’APK |
 | `.github/workflows/ios.yml` | GitHub | Construit l’IPA sur un runner macOS et la publie |
 
-Le premier enchaîne deux jobs : `release` valide le tag, génère les notes depuis
-les commits et crée la release ; `android` installe le SDK et le NDK, lance
-`prebuild` puis `assembleRelease`, signe et attache le fichier.
+Côté Forgejo, trois jobs s’enchaînent : `release` valide le tag, génère les notes
+depuis les commits et crée la release ; `android` installe le SDK et le NDK,
+lance `prebuild` puis `assembleRelease`, signe et attache l’APK ; `ios` récupère
+l’IPA et l’attache à son tour.
 
-Chaque binaire arrive accompagné de son empreinte `.sha256` :
-`lbxmb_1.0.1_android.apk` et `lbxmb_1.0.1_ios-unsigned.ipa`.
+Ce dernier job ne compile rien : il télécharge le fichier depuis la **release
+GitHub** du même tag, où le runner macOS l’a déposé. Le transfert va donc de
+GitHub vers Forgejo, à l’initiative du runner local — jamais l’inverse. C’est
+volontaire : une requête sortante du runner GitHub vers `git.lbxmb.fr` ajoute un
+point de défaillance dont les journaux ne sont lisibles que par un administrateur
+du dépôt GitHub.
+
+Comme `ios` attend la fin de `android`, le build macOS dispose déjà du quart
+d’heure qu’il lui faut quand son tour arrive. S’il n’a toujours rien publié, le
+job réessaie pendant vingt minutes avant d’abandonner.
+
+Chaque binaire arrive accompagné de son empreinte `.sha256`, vérifiée au passage
+pour l’IPA : `lbxmb_1.0.1_android.apk` et `lbxmb_1.0.1_ios-unsigned.ipa`.
 
 ## Secrets à configurer
 
-Aucun n’est obligatoire pour que le workflow aboutisse, mais chacun débloque une
-partie du pipeline.
-
 | Secret | Effet s’il est absent |
 |---|---|
-| `RELEASE_TOKEN` | Le token automatique du runner est utilisé à la place |
+| `RELEASE_TOKEN` | **Le pipeline s’arrête immédiatement** |
 | `ANDROID_KEYSTORE_BASE64` | L’APK garde sa signature de développement |
 | `ANDROID_KEYSTORE_PASSWORD` | idem |
 | `ANDROID_KEY_ALIAS` | idem |
 | `ANDROID_KEY_PASSWORD` | idem |
 
-Et côté GitHub, pour le workflow iOS :
+### Le token de release
 
-| Secret | Effet s’il est absent |
-|---|---|
-| `FORGEJO_TOKEN` | L’IPA reste un artefact GitHub au lieu d’être attachée à la release |
+C’est le seul secret obligatoire, et il détermine **qui apparaît comme auteur de
+la release**. Le `GITHUB_TOKEN` que le runner fournit tout seul n’est rattaché à
+aucun compte : une release créée avec lui s’affiche signée `Ghost`. Il faut donc
+un jeton d’accès personnel.
+
+1. Aller sur <https://git.lbxmb.fr/user/settings/applications>, connecté avec le
+   compte qui doit signer les releases (`interverti`).
+2. Générer un jeton avec le seul périmètre `write:repository`.
+3. L’ajouter dans `Settings → Actions → Secrets` du dépôt, sous le nom exact
+   `RELEASE_TOKEN`.
+
+Le workflow vérifie le jeton avant toute autre chose et affiche le compte
+retenu (`Releases will be authored by …`), ce qui évite de découvrir le problème
+une fois la release publiée. Une release déjà signée `Ghost` ne peut pas être
+réattribuée après coup : l’auteur est figé à la création.
+
+Côté GitHub, **aucun secret n’est nécessaire** : le workflow iOS se contente du
+`GITHUB_TOKEN` fourni automatiquement à chaque exécution pour publier l’IPA sur
+sa propre release.
 
 ### Générer le keystore Android
 
@@ -91,20 +116,25 @@ Sideloadly, qui le resignent avec le compte Apple de l’utilisateur.
 
 ### Mise en place, une seule fois
 
-1. Créer le dépôt `app` sur GitHub, vide.
-2. Dans Forgejo, **Paramètres → Dépôt → Miroirs → Ajouter un miroir push** vers
-   `https://github.com/<compte>/app.git`, avec un *personal access token* GitHub
-   (portée `repo`) comme mot de passe, et l’option de synchronisation des tags
+1. Créer le dépôt [`LB-XMB/app`](https://github.com/LB-XMB/app) sur GitHub, en
+   **public** : les minutes macOS y sont gratuites, alors qu’un dépôt privé n’en
+   offre que 200 par mois sur le plan Free, soit environ un build.
+2. Dans Forgejo, **Paramètres → Miroirs → Ajouter un miroir push** vers
+   `https://github.com/LB-XMB/app.git`, avec un *personal access token* GitHub
+   (portée `repo`) comme mot de passe, et la synchronisation des nouveaux commits
    activée.
-3. Générer un token Forgejo (portée `write:repository`) et le déposer dans les
-   secrets du dépôt GitHub sous le nom `FORGEJO_TOKEN`.
 
-Le miroir pousse les commits et les tags ; le tag déclenche le workflow iOS, qui
-renvoie l’IPA vers la release Forgejo. Les deux pipelines tournant en parallèle,
-le job iOS attend jusqu’à dix minutes que la release apparaisse avant d’abandonner.
+C’est tout : le miroir pousse commits et tags, le tag déclenche le build macOS,
+et le job `ios` de Forgejo vient chercher le résultat. Le dépôt GitHub reste un
+sous-traitant de compilation ; ne jamais y committer directement, le miroir push
+écrase les références distantes.
 
 Le workflow est aussi déclenchable à la main (`workflow_dispatch`) en saisissant
-un numéro de version, ce qui est pratique pour tester sans créer de tag.
+un numéro de version. Dans ce mode, l’IPA reste un simple artefact de run : rien
+n’est publié, ce qui en fait un bon test à blanc.
+
+Si le nom du dépôt miroir change, il apparaît à un seul endroit, la variable
+`MIRROR` du job `ios`.
 
 ### Passer à un IPA signé
 

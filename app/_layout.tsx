@@ -6,6 +6,7 @@ import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 
 import { AppProviders } from '@/components/providers/AppProviders';
+import { useSessionStore } from '@/stores/session';
 import { useSettingsStore } from '@/stores/settings';
 import { fontAssets, useTheme } from '@/ui/theme';
 
@@ -14,6 +15,8 @@ void SplashScreen.preventAutoHideAsync();
 function RootNavigator() {
   const { colors, scheme } = useTheme();
   const consent = useSettingsStore((state) => state.consent);
+  const signInPrompt = useSessionStore((state) => state.prompt);
+  const onboarded = consent !== 'unset' && signInPrompt === 'answered';
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(colors.background);
@@ -34,7 +37,12 @@ function RootNavigator() {
           <Stack.Screen name="bienvenue" options={{ animation: 'fade' }} />
         </Stack.Protected>
 
-        <Stack.Protected guard={consent !== 'unset'}>
+        {/* Signing in comes right after, and can be skipped for good. */}
+        <Stack.Protected guard={consent !== 'unset' && signInPrompt === 'unset'}>
+          <Stack.Screen name="connexion" options={{ animation: 'fade' }} />
+        </Stack.Protected>
+
+        <Stack.Protected guard={onboarded}>
           <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
           <Stack.Screen name="ressource/[id]" />
           <Stack.Screen name="guides/index" />
@@ -43,6 +51,11 @@ function RootNavigator() {
           <Stack.Screen name="historique" />
           <Stack.Screen name="parametres" />
           <Stack.Screen name="a-propos" />
+          <Stack.Screen name="compte" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="forum/index" />
+          <Stack.Screen name="forum/[id]" />
+          <Stack.Screen name="forum/nouveau" />
+          <Stack.Screen name="actualites" />
         </Stack.Protected>
       </Stack>
     </>
