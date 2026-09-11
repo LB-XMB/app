@@ -15,8 +15,9 @@ export const UMAMI_WEBSITE_ID = extra.umamiWebsiteId ?? '';
 /** Public pages of the website, linked from the app. */
 export const WEB_URLS = {
   home: API_BASE_URL,
-  privacy: `${API_BASE_URL}/confidentialite`,
-  terms: `${API_BASE_URL}/conditions`,
+  privacy: `${API_BASE_URL}/legal/rgpd`,
+  terms: `${API_BASE_URL}/legal/cgu`,
+  legalNotice: `${API_BASE_URL}/legal/mentions`,
   apiDocs: `${API_BASE_URL}/api`,
   forum: `${API_BASE_URL}/forum`,
   resource: (id: string) => `${API_BASE_URL}/ressources/${encodeURIComponent(id)}`,

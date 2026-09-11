@@ -1,0 +1,263 @@
+name: Release
+
+# Builds run on tags only. Push a tag such as v1.0.1 to cut a release:
+# the version number is derived from the tag, never committed by hand.
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  NODE_IMAGE: node:22-bookworm
+
+jobs:
+  release:
+    runs-on: docker
+    container:
+      image: node:22-bookworm
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      release_id: ${{ steps.release.outputs.id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from tag
+        id: meta
+        run: |
+          set -eu
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          case "$VERSION" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Tag $TAG is not a semantic version (expected vX.Y.Z)" >&2; exit 1 ;;
+          esac
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes
+        run: |
+          set -eu
+          TAG="${{ steps.meta.outputs.tag }}"
+          PREVIOUS="$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)"
+
+          if [ -n "$PREVIOUS" ]; then
+            echo "## Changements depuis $PREVIOUS" > notes.md
+            echo >> notes.md
+            git log --no-merges --pretty='- %s' "$PREVIOUS..$TAG" >> notes.md
+          else
+            echo "## Première version" > notes.md
+          fi
+
+          cat >> notes.md <<'NOTES'
+
+          ### Installation
+
+          - **Android** : télécharger le `.apk`, puis autoriser l'installation depuis cette source.
+          - **iOS** : le `.ipa` demande un appareil provisionné (TestFlight ou sideload signé).
+          NOTES
+          cat notes.md
+
+      - name: Create or reuse the Forgejo release
+        id: release
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          API="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases"
+          TAG="${{ steps.meta.outputs.tag }}"
+
+          BODY="$(node -e '
+            const fs = require("node:fs");
+            process.stdout.write(JSON.stringify({
+              tag_name: process.argv[1],
+              name: process.argv[1],
+              body: fs.readFileSync("notes.md", "utf8"),
+              draft: false,
+              prerelease: false,
+            }));
+          ' "$TAG")"
+
+          ID="$(curl -sS -X POST "$API" \
+            -H "Authorization: token $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$BODY" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+              try { const j = JSON.parse(d); if (j.id) return console.log(j.id); } catch {}
+              console.log("");
+            })')"
+
+          if [ -z "$ID" ]; then
+            echo "Release already exists, reusing it."
+            ID="$(curl -sS "$API/tags/$TAG" -H "Authorization: token $TOKEN" \
+              | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+                  console.log(JSON.parse(d).id);
+                })')"
+          fi
+
+          test -n "$ID"
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          echo "Release id: $ID"
+
+  android:
+    needs: release
+    runs-on: docker
+    container:
+      image: node:22-bookworm
+    env:
+      APP_VERSION: ${{ needs.release.outputs.version }}
+      ANDROID_HOME: /opt/android-sdk
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      # The emulator architectures only bloat a sideloadable APK.
+      ARCHITECTURES: arm64-v8a,armeabi-v7a
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install JDK 17
+        run: |
+          set -eu
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq openjdk-17-jdk-headless unzip > /dev/null
+          java -version
+
+      - name: Install Android SDK
+        run: |
+          set -eu
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          curl -sSL -o /tmp/cmdline-tools.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
+          unzip -q -o /tmp/cmdline-tools.zip -d "$ANDROID_HOME/cmdline-tools"
+          mv -f "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          # React Native 0.86 compiles C++ for Reanimated and MMKV, hence the NDK.
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0" \
+            "ndk;27.1.12297006" "cmake;3.30.5" > /dev/null
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply the release version
+        run: npm version "$APP_VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Generate the native project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Assemble the release APK
+        working-directory: android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=$ARCHITECTURES --no-daemon
+
+      - name: Sign with the release keystore
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -eu
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          if [ -z "${KEYSTORE:-}" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set, the APK keeps its"
+            echo "::warning::development signature. Fine for sideloading, not for Play."
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE" | base64 -d > /tmp/release.jks
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign \
+            --ks /tmp/release.jks \
+            --ks-pass "env:KEYSTORE_PASSWORD" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --key-pass "env:KEY_PASSWORD" \
+            "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$APK" | head -4
+          rm -f /tmp/release.jks
+
+      - name: Upload the APK to the release
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          NAME="lbxmb_${APP_VERSION}_android.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "$NAME"
+          sha256sum "$NAME" > "$NAME.sha256"
+          API="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases/${{ needs.release.outputs.release_id }}/assets"
+          for FILE in "$NAME" "$NAME.sha256"; do
+            curl -sS --fail-with-body -X POST "$API?name=$FILE" \
+              -H "Authorization: token $TOKEN" \
+              -F "attachment=@$FILE" > /dev/null
+            echo "Uploaded $FILE"
+          done
+
+  ios:
+    needs: release
+    runs-on: docker
+    container:
+      image: node:22-bookworm
+    env:
+      APP_VERSION: ${{ needs.release.outputs.version }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      # eas build archives the working tree instead of the git HEAD, so the
+      # version bump applied below reaches the build servers.
+      EAS_NO_VCS: "1"
+    steps:
+      - name: Check for EAS credentials
+        id: check
+        run: |
+          if [ -n "${EXPO_TOKEN:-}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::EXPO_TOKEN is not set, skipping the iOS build."
+            echo "::warning::Signing an IPA requires macOS, which EAS provides."
+          fi
+
+      - name: Checkout
+        if: steps.check.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          npm ci
+          npm install --global eas-cli@latest
+
+      - name: Apply the release version
+        if: steps.check.outputs.ready == 'true'
+        run: npm version "$APP_VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Build the IPA on EAS
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          set -eu
+          eas build \
+            --platform ios \
+            --profile production \
+            --non-interactive \
+            --wait \
+            --json > build.json
+          node -e '
+            const builds = require("./build.json");
+            const url = builds[0]?.artifacts?.applicationArchiveUrl ?? builds[0]?.artifacts?.buildUrl;
+            if (!url) { console.error("No artifact in the EAS response"); process.exit(1); }
+            console.log(url);
+          ' > artifact.url
+          curl -sSL --fail-with-body -o "lbxmb_${APP_VERSION}_ios.ipa" "$(cat artifact.url)"
+          ls -lh "lbxmb_${APP_VERSION}_ios.ipa"
+
+      - name: Upload the IPA to the release
+        if: steps.check.outputs.ready == 'true'
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          NAME="lbxmb_${APP_VERSION}_ios.ipa"
+          sha256sum "$NAME" > "$NAME.sha256"
+          API="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases/${{ needs.release.outputs.release_id }}/assets"
+          for FILE in "$NAME" "$NAME.sha256"; do
+            curl -sS --fail-with-body -X POST "$API?name=$FILE" \
+              -H "Authorization: token $TOKEN" \
+              -F "attachment=@$FILE" > /dev/null
+            echo "Uploaded $FILE"
+          done

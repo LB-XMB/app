@@ -71,6 +71,18 @@ Pour les itérations suivantes, `npm start` suffit une fois le build natif insta
 | `npm run prebuild` | Régénère les projets natifs |
 | `npm run doctor` | Diagnostic des versions de dépendances |
 
+### Publier une version
+
+Pousser un tag suffit : le workflow Forgejo construit l’APK et l’IPA, puis crée
+la release avec les binaires en pièces jointes.
+
+```bash
+git tag v1.0.1 && git push origin v1.0.1
+```
+
+Le détail du pipeline et des secrets est dans
+[`docs/release.md`](./docs/release.md).
+
 ### Architecture
 
 ```
@@ -85,12 +97,13 @@ components/          Composants métier (ressources, guides, recherche, layout)
 services/            Client API typé, téléchargements, analytics
 stores/              État persistant (Zustand + MMKV)
 hooks/               Hooks de données (TanStack Query)
-design/              Exports du design
+design/              Exports du design et assets store
 docs/                Documentation technique
 ```
 
 Le détail est documenté dans [`docs/architecture.md`](./docs/architecture.md), l’API dans
-[`docs/api.md`](./docs/api.md) et le design system dans
+[`docs/api.md`](./docs/api.md), la publication dans
+[`docs/release.md`](./docs/release.md) et le design system dans
 [`design/README.md`](./design/README.md).
 
 ### Stack
