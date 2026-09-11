@@ -1,0 +1,147 @@
+name: iOS
+
+# Forgejo has no macOS runner, and building for iOS requires Xcode. This
+# workflow therefore runs on the GitHub mirror, where macOS runners are free,
+# and produces an unsigned IPA meant to be sideloaded (AltStore, SideStore,
+# TrollStore) or re-signed locally with Sideloadly.
+#
+# The resulting file is attached to the matching Forgejo release when
+# FORGEJO_TOKEN is available, and always kept as a workflow artifact.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, for example 1.0.2"
+        required: true
+
+env:
+  FORGEJO_API: https://git.lbxmb.fr/api/v1/repos/lbxmb/app
+
+jobs:
+  ipa:
+    # Forgejo also reads .github/workflows; this keeps it from queueing a job
+    # for a runner label that does not exist there.
+    if: ${{ github.server_url == 'https://github.com' }}
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read the version
+        id: meta
+        run: |
+          set -eu
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+          fi
+          case "$VERSION" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Expected a semantic version, got $VERSION" >&2; exit 1 ;;
+          esac
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building $VERSION"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply the release version
+        run: npm version "${{ steps.meta.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Generate the Xcode project
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install pods
+        run: npx pod-install
+
+      - name: Show the toolchain
+        run: xcodebuild -version
+
+      - name: Build without signing
+        run: |
+          set -eu
+          WORKSPACE="$(ls -d ios/*.xcworkspace | head -1)"
+          SCHEME="$(basename "$WORKSPACE" .xcworkspace)"
+          echo "Workspace: $WORKSPACE / scheme: $SCHEME"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            | tail -40
+
+      - name: Package the IPA
+        id: package
+        run: |
+          set -eu
+          APP="$(ls -d build/Build/Products/Release-iphoneos/*.app | head -1)"
+          NAME="lbxmb_${{ steps.meta.outputs.version }}_ios-unsigned.ipa"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry "$NAME" Payload
+          shasum -a 256 "$NAME" > "$NAME.sha256"
+          ls -lh "$NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Keep the IPA as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: |
+            ${{ steps.package.outputs.name }}
+            ${{ steps.package.outputs.name }}.sha256
+          if-no-files-found: error
+
+      - name: Attach the IPA to the Forgejo release
+        if: ${{ github.event_name == 'push' }}
+        env:
+          TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+          NAME: ${{ steps.package.outputs.name }}
+          TAG: v${{ steps.meta.outputs.version }}
+        run: |
+          set -eu
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::warning::FORGEJO_TOKEN is not set; the IPA stays a GitHub artifact."
+            exit 0
+          fi
+
+          # The Forgejo workflow creates the release in parallel, so give it
+          # time to appear before giving up.
+          ID=""
+          for _ in $(seq 1 20); do
+            ID="$(curl -sS "$FORGEJO_API/releases/tags/$TAG" \
+              -H "Authorization: token $TOKEN" \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
+            [ -n "$ID" ] && break
+            echo "Release $TAG not published yet, waiting."
+            sleep 30
+          done
+
+          if [ -z "$ID" ]; then
+            echo "::error::No Forgejo release found for $TAG."
+            exit 1
+          fi
+
+          for FILE in "$NAME" "$NAME.sha256"; do
+            curl -sS --fail-with-body -X POST "$FORGEJO_API/releases/$ID/assets?name=$FILE" \
+              -H "Authorization: token $TOKEN" \
+              -F "attachment=@$FILE" > /dev/null
+            echo "Uploaded $FILE"
+          done

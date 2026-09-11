@@ -73,8 +73,8 @@ Pour les itérations suivantes, `npm start` suffit une fois le build natif insta
 
 ### Publier une version
 
-Pousser un tag suffit : le workflow Forgejo construit l’APK et l’IPA, puis crée
-la release avec les binaires en pièces jointes.
+Pousser un tag suffit : Forgejo crée la release et construit l’APK, tandis que
+le miroir GitHub fournit le runner macOS qui produit l’IPA.
 
 ```bash
 git tag v1.0.1 && git push origin v1.0.1

@@ -2,6 +2,9 @@ name: Release
 
 # Builds run on tags only. Push a tag such as v1.0.1 to cut a release:
 # the version number is derived from the tag, never committed by hand.
+#
+# The IPA is produced separately by .github/workflows/ios.yml, on the GitHub
+# mirror, because signing for iOS requires a macOS machine.
 on:
   push:
     tags:
@@ -56,7 +59,8 @@ jobs:
           ### Installation
 
           - **Android** : télécharger le `.apk`, puis autoriser l'installation depuis cette source.
-          - **iOS** : le `.ipa` demande un appareil provisionné (TestFlight ou sideload signé).
+          - **iOS** : le `.ipa` n'est pas signé, il s'installe avec AltStore, SideStore,
+            TrollStore ou Sideloadly.
           NOTES
           cat notes.md
 
@@ -181,78 +185,6 @@ jobs:
           set -eu
           NAME="lbxmb_${APP_VERSION}_android.apk"
           cp android/app/build/outputs/apk/release/app-release.apk "$NAME"
-          sha256sum "$NAME" > "$NAME.sha256"
-          API="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases/${{ needs.release.outputs.release_id }}/assets"
-          for FILE in "$NAME" "$NAME.sha256"; do
-            curl -sS --fail-with-body -X POST "$API?name=$FILE" \
-              -H "Authorization: token $TOKEN" \
-              -F "attachment=@$FILE" > /dev/null
-            echo "Uploaded $FILE"
-          done
-
-  ios:
-    needs: release
-    runs-on: docker
-    container:
-      image: node:22-bookworm
-    env:
-      APP_VERSION: ${{ needs.release.outputs.version }}
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      # eas build archives the working tree instead of the git HEAD, so the
-      # version bump applied below reaches the build servers.
-      EAS_NO_VCS: "1"
-    steps:
-      - name: Check for EAS credentials
-        id: check
-        run: |
-          if [ -n "${EXPO_TOKEN:-}" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::EXPO_TOKEN is not set, skipping the iOS build."
-            echo "::warning::Signing an IPA requires macOS, which EAS provides."
-          fi
-
-      - name: Checkout
-        if: steps.check.outputs.ready == 'true'
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        if: steps.check.outputs.ready == 'true'
-        run: |
-          npm ci
-          npm install --global eas-cli@latest
-
-      - name: Apply the release version
-        if: steps.check.outputs.ready == 'true'
-        run: npm version "$APP_VERSION" --no-git-tag-version --allow-same-version
-
-      - name: Build the IPA on EAS
-        if: steps.check.outputs.ready == 'true'
-        run: |
-          set -eu
-          eas build \
-            --platform ios \
-            --profile production \
-            --non-interactive \
-            --wait \
-            --json > build.json
-          node -e '
-            const builds = require("./build.json");
-            const url = builds[0]?.artifacts?.applicationArchiveUrl ?? builds[0]?.artifacts?.buildUrl;
-            if (!url) { console.error("No artifact in the EAS response"); process.exit(1); }
-            console.log(url);
-          ' > artifact.url
-          curl -sSL --fail-with-body -o "lbxmb_${APP_VERSION}_ios.ipa" "$(cat artifact.url)"
-          ls -lh "lbxmb_${APP_VERSION}_ios.ipa"
-
-      - name: Upload the IPA to the release
-        if: steps.check.outputs.ready == 'true'
-        env:
-          TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          set -eu
-          NAME="lbxmb_${APP_VERSION}_ios.ipa"
           sha256sum "$NAME" > "$NAME.sha256"
           API="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases/${{ needs.release.outputs.release_id }}/assets"
           for FILE in "$NAME" "$NAME.sha256"; do

@@ -31,15 +31,19 @@ Aucun numéro de version n’est donc à modifier à la main. En local, la versi
 
 ## Ce que fait le workflow
 
-| Job | Rôle |
-|---|---|
-| `release` | Valide le tag, génère les notes depuis les commits, crée la release |
-| `android` | Installe le SDK et le NDK, `prebuild`, `assembleRelease`, signe, publie l’APK |
-| `ios` | Délègue le build à EAS, télécharge l’IPA, la publie |
+Le même tag déclenche deux pipelines, sur deux forges différentes.
 
-Les deux jobs de build tournent en parallèle et attachent leurs fichiers
-(`lbxmb_1.0.1_android.apk`, `lbxmb_1.0.1_ios.ipa`) accompagnés de leur empreinte
-`.sha256`.
+| Workflow | Forge | Rôle |
+|---|---|---|
+| `.forgejo/workflows/release.yml` | Forgejo | Crée la release, construit et publie l’APK |
+| `.github/workflows/ios.yml` | GitHub | Construit l’IPA sur un runner macOS et la publie |
+
+Le premier enchaîne deux jobs : `release` valide le tag, génère les notes depuis
+les commits et crée la release ; `android` installe le SDK et le NDK, lance
+`prebuild` puis `assembleRelease`, signe et attache le fichier.
+
+Chaque binaire arrive accompagné de son empreinte `.sha256` :
+`lbxmb_1.0.1_android.apk` et `lbxmb_1.0.1_ios-unsigned.ipa`.
 
 ## Secrets à configurer
 
@@ -53,7 +57,12 @@ partie du pipeline.
 | `ANDROID_KEYSTORE_PASSWORD` | idem |
 | `ANDROID_KEY_ALIAS` | idem |
 | `ANDROID_KEY_PASSWORD` | idem |
-| `EXPO_TOKEN` | Le job iOS est ignoré avec un avertissement |
+
+Et côté GitHub, pour le workflow iOS :
+
+| Secret | Effet s’il est absent |
+|---|---|
+| `FORGEJO_TOKEN` | L’IPA reste un artefact GitHub au lieu d’être attachée à la release |
 
 ### Générer le keystore Android
 
@@ -72,21 +81,42 @@ base64 -w0 lbxmb-release.jks   # valeur de ANDROID_KEYSTORE_BASE64
 
 Garder le fichier `.jks` hors du dépôt, dans un coffre.
 
-### iOS et EAS
+## iOS : le miroir GitHub
 
-Signer une IPA demande macOS. Sans runner Apple, le build passe par
-[EAS Build](https://docs.expo.dev/build/introduction/), qui fournit les machines
-et conserve les certificats :
+Compiler pour iOS exige Xcode, donc macOS. Forgejo n’a pas de runner Apple, et
+un IPA signé demanderait un abonnement Apple Developer. Le build part donc sur
+les runners macOS de GitHub, gratuits, et produit un **IPA non signé** : le
+format que la communauté installe avec AltStore, SideStore, TrollStore ou
+Sideloadly, qui le resignent avec le compte Apple de l’utilisateur.
+
+### Mise en place, une seule fois
+
+1. Créer le dépôt `app` sur GitHub, vide.
+2. Dans Forgejo, **Paramètres → Dépôt → Miroirs → Ajouter un miroir push** vers
+   `https://github.com/<compte>/app.git`, avec un *personal access token* GitHub
+   (portée `repo`) comme mot de passe, et l’option de synchronisation des tags
+   activée.
+3. Générer un token Forgejo (portée `write:repository`) et le déposer dans les
+   secrets du dépôt GitHub sous le nom `FORGEJO_TOKEN`.
+
+Le miroir pousse les commits et les tags ; le tag déclenche le workflow iOS, qui
+renvoie l’IPA vers la release Forgejo. Les deux pipelines tournant en parallèle,
+le job iOS attend jusqu’à dix minutes que la release apparaisse avant d’abandonner.
+
+Le workflow est aussi déclenchable à la main (`workflow_dispatch`) en saisissant
+un numéro de version, ce qui est pratique pour tester sans créer de tag.
+
+### Passer à un IPA signé
+
+Le jour où un compte Apple Developer entre en jeu, les profils EAS de
+`eas.json` sont déjà prêts et fournissent, eux, un binaire acceptable par
+TestFlight et l’App Store :
 
 ```bash
 npx eas login
-npx eas build:configure
 npx eas credentials        # certificat de distribution + profil de provisioning
+npx eas build --platform ios --profile production
 ```
-
-Puis déposer le token (`npx eas whoami --json`, ou un *robot token* depuis
-expo.dev) dans le secret `EXPO_TOKEN`. Un compte Apple Developer payant reste
-nécessaire pour produire une IPA installable.
 
 ## APK ou AAB
 
