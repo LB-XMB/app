@@ -61,7 +61,7 @@ pour l’IPA : `lbxmb_1.0.1_android.apk` et `lbxmb_1.0.1_ios-unsigned.ipa`.
 
 | Secret | Effet s’il est absent |
 |---|---|
-| `RELEASE_TOKEN` | **Le pipeline s’arrête immédiatement** |
+| `RELEASER_TOKEN` | **Le pipeline s’arrête immédiatement** |
 | `ANDROID_KEYSTORE_BASE64` | L’APK garde sa signature de développement |
 | `ANDROID_KEYSTORE_PASSWORD` | idem |
 | `ANDROID_KEY_ALIAS` | idem |
@@ -78,7 +78,7 @@ un jeton d’accès personnel.
    compte qui doit signer les releases (`interverti`).
 2. Générer un jeton avec le seul périmètre `write:repository`.
 3. L’ajouter dans `Settings → Actions → Secrets` du dépôt, sous le nom exact
-   `RELEASE_TOKEN`.
+   `RELEASER_TOKEN`.
 
 Le workflow vérifie le jeton avant toute autre chose et affiche le compte
 retenu (`Releases will be authored by …`), ce qui évite de découvrir le problème

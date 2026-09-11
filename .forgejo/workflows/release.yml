@@ -24,18 +24,18 @@ jobs:
     steps:
       # Whoever owns the token that calls the API becomes the author of the
       # release. The automatic GITHUB_TOKEN of Actions has no user behind it,
-      # so releases created with it are attributed to Ghost. RELEASE_TOKEN is a
+      # so releases created with it are attributed to Ghost. RELEASER_TOKEN is a
       # personal access token, which is what puts a real name on the release.
       - name: Check the release token
         env:
-          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          TOKEN: ${{ secrets.RELEASER_TOKEN }}
         run: |
           set -eu
           if [ -z "${TOKEN:-}" ]; then
-            echo "::error::RELEASE_TOKEN is missing. Create a personal access token on"
+            echo "::error::RELEASER_TOKEN is missing. Create a personal access token on"
             echo "::error::$GITHUB_SERVER_URL/user/settings/applications with the"
             echo "::error::write:repository scope, then add it to this repository as a"
-            echo "::error::secret named RELEASE_TOKEN."
+            echo "::error::secret named RELEASER_TOKEN."
             exit 1
           fi
           WHO="$(curl -sS "$GITHUB_SERVER_URL/api/v1/user" \
@@ -44,7 +44,7 @@ jobs:
                 try { console.log(JSON.parse(d).login ?? ""); } catch { console.log(""); }
               })')"
           if [ -z "$WHO" ]; then
-            echo "::error::RELEASE_TOKEN was rejected by $GITHUB_SERVER_URL."
+            echo "::error::RELEASER_TOKEN was rejected by $GITHUB_SERVER_URL."
             exit 1
           fi
           echo "Releases will be authored by $WHO."
@@ -94,7 +94,7 @@ jobs:
       - name: Create or reuse the Forgejo release
         id: release
         env:
-          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          TOKEN: ${{ secrets.RELEASER_TOKEN }}
         run: |
           set -eu
           API="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases"
@@ -207,7 +207,7 @@ jobs:
 
       - name: Upload the APK to the release
         env:
-          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          TOKEN: ${{ secrets.RELEASER_TOKEN }}
         run: |
           set -eu
           NAME="lbxmb_${APP_VERSION}_android.apk"
@@ -263,7 +263,7 @@ jobs:
 
       - name: Upload the IPA to the release
         env:
-          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          TOKEN: ${{ secrets.RELEASER_TOKEN }}
         run: |
           set -eu
           NAME="lbxmb_${APP_VERSION}_ios-unsigned.ipa"
