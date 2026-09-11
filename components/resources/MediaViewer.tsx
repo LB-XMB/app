@@ -5,12 +5,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedPressable, Button, Typography } from '@/ui/components';
@@ -148,9 +148,9 @@ function ZoomableImage({ uri, onClose, onZoomChange }: ZoomableImageProps) {
         scale.value = withTiming(1, { duration: duration.fast });
         offsetX.value = withTiming(0, { duration: duration.fast });
         offsetY.value = withTiming(0, { duration: duration.fast });
-        runOnJS(setZoomed)(false);
+        scheduleOnRN(setZoomed, false);
       } else {
-        runOnJS(setZoomed)(true);
+        scheduleOnRN(setZoomed, true);
       }
     });
 
@@ -173,16 +173,16 @@ function ZoomableImage({ uri, onClose, onZoomChange }: ZoomableImageProps) {
         scale.value = withSpring(1, { damping: 22, stiffness: 220 });
         offsetX.value = withSpring(0, { damping: 22, stiffness: 220 });
         offsetY.value = withSpring(0, { damping: 22, stiffness: 220 });
-        runOnJS(setZoomed)(false);
+        scheduleOnRN(setZoomed, false);
       } else {
         scale.value = withSpring(2.5, { damping: 22, stiffness: 220 });
-        runOnJS(setZoomed)(true);
+        scheduleOnRN(setZoomed, true);
       }
     });
 
   const tapToClose = Gesture.Tap().onEnd((_event, success) => {
     if (success && scale.value <= ZOOM_EPSILON) {
-      runOnJS(onClose)();
+      scheduleOnRN(onClose);
     }
   });
 

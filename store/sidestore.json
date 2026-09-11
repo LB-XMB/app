@@ -1,0 +1,32 @@
+{
+  "name": "LB'XMB",
+  "identifier": "fr.lbxmb.sidestore",
+  "sourceURL": "https://git.lbxmb.fr/lbxmb/app/raw/branch/main/store/sidestore.json",
+  "apps": [
+    {
+      "name": "LB'XMB",
+      "bundleIdentifier": "fr.lbxmb.app",
+      "developerName": "LB'XMB",
+      "subtitle": "Modding console",
+      "localizedDescription": "Le catalogue communautaire de modding console : ressources, guides, forum et FTP vers ta console.",
+      "iconURL": "https://git.lbxmb.fr/lbxmb/app/raw/branch/main/assets/images/icon.png",
+      "tintColor": "3B82F6",
+      "category": "utilities",
+      "versions": [
+        {
+          "version": "1.0.3",
+          "date": "2026-09-12T00:00:00Z",
+          "localizedDescription": "Auth, forum, actualités, FTP, médias et Liquid Glass.",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.3/lbxmb_1.0.3_ios-unsigned.ipa",
+          "size": 18000000,
+          "minOSVersion": "15.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {}
+      }
+    }
+  ],
+  "news": []
+}

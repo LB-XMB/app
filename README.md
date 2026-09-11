@@ -12,10 +12,33 @@ télécharge tes fichiers et garde tes favoris à portée de main, même hors li
 [![Site web](https://img.shields.io/badge/site-lbxmb.fr-3B82F6?style=for-the-badge)](https://lbxmb.fr)
 [![API](https://img.shields.io/badge/API-publique-F97316?style=for-the-badge)](https://lbxmb.fr/api)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2057-000020?style=for-the-badge&logo=expo)](https://expo.dev)
+[![Obtainium](https://img.shields.io/badge/Obtainium-Android-2E7D32?style=for-the-badge)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22fr.lbxmb.app%22%2C%22url%22%3A%22https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%22%2C%22author%22%3A%22LB%27XMB%22%2C%22name%22%3A%22LB%27XMB%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22overrideSource%5C%22%3A%5C%22Forgejo%20(Codeberg)%5C%22%2C%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22android%5C%5C%5C%5C.apk%24%5C%22%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%7D%22%7D)
+[![SideStore](https://img.shields.io/badge/SideStore-iOS-5C6BC0?style=for-the-badge)](sidestore://source?url=https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%2Fraw%2Fbranch%2Fmain%2Fstore%2Fsidestore.json)
+[![F-Droid](https://img.shields.io/badge/F--Droid-via%20Obtainium-1976D2?style=for-the-badge&logo=f-droid&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22fr.lbxmb.app%22%2C%22url%22%3A%22https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%22%2C%22author%22%3A%22LB%27XMB%22%2C%22name%22%3A%22LB%27XMB%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22overrideSource%5C%22%3A%5C%22Forgejo%20(Codeberg)%5C%22%2C%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22android%5C%5C%5C%5C.apk%24%5C%22%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%7D%22%7D)
 
 </div>
 
 ---
+
+## Installation
+
+| Plateforme | Comment faire |
+|---|---|
+| **Android — Obtainium** | Installe [Obtainium](https://github.com/ImranR98/Obtainium/releases), puis ouvre le badge ci-dessus (ou ajoute `https://git.lbxmb.fr/lbxmb/app` avec la source *Forgejo (Codeberg)*). Les mises à jour APK arrivent à chaque tag. |
+| **Android — F-Droid** | Pas encore dans le catalogue officiel (voir [`store/fdroid.md`](./store/fdroid.md)). En attendant, **Obtainium** joue le même rôle : APK signé depuis nos releases, hors Play Store. |
+| **iOS — SideStore** | Dans SideStore → Sources → ajoute<br>`https://git.lbxmb.fr/lbxmb/app/raw/branch/main/store/sidestore.json`<br>L’IPA n’est pas signée : SideStore / AltStore / TrollStore s’occupent de la signature. |
+| **Manuel** | Télécharge l’APK ou l’IPA sur la [page des releases](https://git.lbxmb.fr/lbxmb/app/releases). |
+
+<p align="center">
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22fr.lbxmb.app%22%2C%22url%22%3A%22https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%22%2C%22author%22%3A%22LB%27XMB%22%2C%22name%22%3A%22LB%27XMB%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22overrideSource%5C%22%3A%5C%22Forgejo%20(Codeberg)%5C%22%2C%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22android%5C%5C%5C%5C.apk%24%5C%22%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%7D%22%7D"><img src="https://img.shields.io/badge/Obtenir_sur-Obtainium-2E7D32?style=for-the-badge&logo=android&logoColor=white" alt="Obtainium" /></a>
+  &nbsp;
+  <a href="sidestore://source?url=https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%2Fraw%2Fbranch%2Fmain%2Fstore%2Fsidestore.json"><img src="https://img.shields.io/badge/Ajouter_dans-SideStore-5C6BC0?style=for-the-badge&logo=apple&logoColor=white" alt="SideStore" /></a>
+  &nbsp;
+  <a href="https://git.lbxmb.fr/lbxmb/app/releases"><img src="https://img.shields.io/badge/APK%20%2F%20IPA-Releases-3B82F6?style=for-the-badge" alt="Releases" /></a>
+</p>
+
+Les configs brutes sont dans [`store/obtainium.json`](./store/obtainium.json) et
+[`store/sidestore.json`](./store/sidestore.json).
 
 ## Ce que fait l’application
 

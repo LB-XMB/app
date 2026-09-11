@@ -1,0 +1,8 @@
+{
+  "id": "fr.lbxmb.app",
+  "url": "https://git.lbxmb.fr/lbxmb/app",
+  "author": "LB'XMB",
+  "name": "LB'XMB",
+  "preferredApkIndex": 0,
+  "additionalSettings": "{\"overrideSource\":\"Forgejo (Codeberg)\",\"includePrereleases\":false,\"apkFilterRegEx\":\"android\\\\.apk$\",\"invertAPKFilter\":false,\"autoApkFilterByArch\":true,\"about\":\"Catalogue communautaire de modding console.\"}"
+}
