@@ -39,9 +39,18 @@ Le même tag déclenche deux pipelines, sur deux forges différentes.
 | `.github/workflows/ios.yml` | GitHub | Construit l’IPA sur un runner macOS et la publie |
 
 Côté Forgejo, trois jobs s’enchaînent : `release` valide le tag, génère les notes
-depuis les commits et crée la release ; `android` installe le SDK et le NDK,
-lance `prebuild` puis `assembleRelease`, signe et attache l’APK ; `ios` récupère
-l’IPA et l’attache à son tour.
+depuis les commits et crée la release ; `android` part d’une image Docker
+pré-cuite (`lbxmb-android-builder`, voir
+[`ci/android-builder/`](../ci/android-builder/)), lance `prebuild` puis
+`assembleRelease` (ABI **arm64-v8a** seule), signe et attache l’APK ; `ios`
+récupère l’IPA et l’attache à son tour.
+
+Avant la **première** release après un changement de pins SDK/NDK, construire
+l’image sur l’hôte du runner :
+
+```bash
+./ci/android-builder/build.sh
+```
 
 Ce dernier job ne compile rien : il télécharge le fichier depuis la **release
 GitHub** du même tag, où le runner macOS l’a déposé. Le transfert va donc de
@@ -150,8 +159,11 @@ npx eas build --platform ios --profile production
 
 ## APK ou AAB
 
-L’asset de release est un **APK universel**, pensé pour l’installation directe
-depuis le site ou le forum. Le Play Store, lui, exige un bundle :
+L’asset de release est un **APK arm64-v8a**, pensé pour l’installation directe
+depuis le site, Obtainium ou le forum (téléphones Android récents). Les très
+vieux appareils 32-bit (`armeabi-v7a`) ne sont plus ciblés par le pipeline CI,
+ce qui divise à peu près par deux le temps de compilation native. Le Play Store,
+lui, exige un bundle :
 
 ```bash
 npx eas build --platform android --profile production-store
