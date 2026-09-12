@@ -135,13 +135,11 @@ jobs:
     needs: release
     runs-on: docker
     # JDK + SDK + NDK are baked into the image (ci/android-builder/).
-    # Rebuild on the runner host: ./ci/android-builder/build.sh
-    # Named volumes keep Gradle/npm caches across tags on this runner host.
+    # Rebuild + push on the runner host: ./ci/android-builder/build.sh
+    # Do NOT mount volumes via container.options unless the runner
+    # config lists them under container.valid_volumes (empty = reject).
     container:
-      image: lbxmb-android-builder:sdk36-ndk27
-      options: >-
-        -v lbxmb-ci-gradle:/root/.gradle
-        -v lbxmb-ci-npm:/root/.npm
+      image: localhost:5001/lbxmb/android-builder:sdk36-ndk27
     env:
       APP_VERSION: ${{ needs.release.outputs.version }}
       ANDROID_HOME: /opt/android-sdk
