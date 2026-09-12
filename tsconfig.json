@@ -4,6 +4,7 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
+    "resolveJsonModule": true,
     "paths": {
       "@/*": ["./*"]
     }

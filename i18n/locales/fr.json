@@ -1,0 +1,71 @@
+{
+  "tabs": {
+    "home": "Accueil",
+    "catalogue": "Catalogue",
+    "ftp": "FTP",
+    "search": "Recherche",
+    "profile": "Profil"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "appearance": "Apparence",
+    "notifications": "Notifications",
+    "privacy": "Confidentialité",
+    "security": "Sécurité",
+    "language": "Langue",
+    "haptics": "Retours haptiques",
+    "hapticsHint": "Vibration légère à chaque appui",
+    "downloadNotifs": "Notifs téléchargements",
+    "downloadNotifsHint": "Alerte locale quand un fichier est prêt",
+    "forumInbox": "Alertes forum (inbox)",
+    "forumInboxHint": "Charge l’inbox API quand tu es connecté — pas de push distant",
+    "appLock": "Verrouillage de l’app",
+    "appLockHint": "Biométrie au retour au premier plan",
+    "appLockUnavailable": "Aucune biométrie configurée sur cet appareil",
+    "langSystem": "Système",
+    "langFr": "Français",
+    "langEn": "English"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "continueOnSite": "Continuer sur le site",
+    "notSignedIn": "Pas encore connecté",
+    "signedInOn": "Connecté sur lbxmb.fr"
+  },
+  "lists": {
+    "title": "Mes listes",
+    "subtitle": "Collections locales",
+    "empty": "Aucune liste",
+    "addToList": "Ajouter à une liste"
+  },
+  "report": {
+    "title": "Signaler",
+    "thanks": "Merci",
+    "sent": "Ton signalement a bien été envoyé à l’équipe."
+  },
+  "ftp": {
+    "title": "FTP / SFTP",
+    "noProfile": "Aucun profil"
+  },
+  "catalogue": {
+    "title": "Catalogue",
+    "empty": "Aucune ressource"
+  },
+  "resource": {
+    "share": "Partager",
+    "report": "Signaler",
+    "addToList": "Ajouter à une liste"
+  },
+  "offline": {
+    "cache": "Hors ligne (cache)"
+  },
+  "widgets": {
+    "title": "Widgets",
+    "stub": "Aperçu des données widgets (écran d’accueil natif reporté)"
+  },
+  "lock": {
+    "title": "Application verrouillée",
+    "hint": "Utilise biométrie ou le code de l’appareil pour continuer.",
+    "unlock": "Déverrouiller"
+  }
+}

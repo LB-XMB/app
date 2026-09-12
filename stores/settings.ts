@@ -24,6 +24,10 @@ interface SettingsState {
   downloadNotifications: boolean;
   /** Poll forum inbox when signed in (opt-in). */
   forumInboxEnabled: boolean;
+  /** Require biometrics when returning to the app. */
+  appLockEnabled: boolean;
+  /** UI language override: system follows device, else force fr/en. */
+  language: 'system' | 'fr' | 'en';
   /** Last app version for which the changelog sheet was shown. */
   lastSeenAppVersion: string | null;
   setTheme: (theme: ThemePreference) => void;
@@ -32,6 +36,8 @@ interface SettingsState {
   setHapticsEnabled: (enabled: boolean) => void;
   setDownloadNotifications: (enabled: boolean) => void;
   setForumInboxEnabled: (enabled: boolean) => void;
+  setAppLockEnabled: (enabled: boolean) => void;
+  setLanguage: (language: 'system' | 'fr' | 'en') => void;
   setLastSeenAppVersion: (version: string) => void;
 }
 
@@ -46,6 +52,8 @@ export const useSettingsStore = create<SettingsState>()(
       hapticsEnabled: true,
       downloadNotifications: false,
       forumInboxEnabled: false,
+      appLockEnabled: false,
+      language: 'system',
       lastSeenAppVersion: null,
       setTheme: (theme) => set({ theme }),
       setConsent: (consent) => set({ consent, consentDate: new Date().toISOString() }),
@@ -53,6 +61,8 @@ export const useSettingsStore = create<SettingsState>()(
       setHapticsEnabled: (hapticsEnabled) => set({ hapticsEnabled }),
       setDownloadNotifications: (downloadNotifications) => set({ downloadNotifications }),
       setForumInboxEnabled: (forumInboxEnabled) => set({ forumInboxEnabled }),
+      setAppLockEnabled: (appLockEnabled) => set({ appLockEnabled }),
+      setLanguage: (language) => set({ language }),
       setLastSeenAppVersion: (lastSeenAppVersion) => set({ lastSeenAppVersion }),
     }),
     {

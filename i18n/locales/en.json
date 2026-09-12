@@ -1,0 +1,71 @@
+{
+  "tabs": {
+    "home": "Home",
+    "catalogue": "Catalog",
+    "ftp": "FTP",
+    "search": "Search",
+    "profile": "Profile"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "notifications": "Notifications",
+    "privacy": "Privacy",
+    "security": "Security",
+    "language": "Language",
+    "haptics": "Haptics",
+    "hapticsHint": "Light vibration on tap",
+    "downloadNotifs": "Download notifications",
+    "downloadNotifsHint": "Local alert when a file is ready",
+    "forumInbox": "Forum alerts (inbox)",
+    "forumInboxHint": "Loads the API inbox when signed in — no remote push",
+    "appLock": "App lock",
+    "appLockHint": "Biometrics when returning to the foreground",
+    "appLockUnavailable": "No biometrics set up on this device",
+    "langSystem": "System",
+    "langFr": "Français",
+    "langEn": "English"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "continueOnSite": "Continue on the website",
+    "notSignedIn": "Not signed in yet",
+    "signedInOn": "Signed in on lbxmb.fr"
+  },
+  "lists": {
+    "title": "My lists",
+    "subtitle": "Local collections",
+    "empty": "No lists yet",
+    "addToList": "Add to a list"
+  },
+  "report": {
+    "title": "Report",
+    "thanks": "Thanks",
+    "sent": "Your report was sent to the team."
+  },
+  "ftp": {
+    "title": "FTP / SFTP",
+    "noProfile": "No profile"
+  },
+  "catalogue": {
+    "title": "Catalog",
+    "empty": "No resources"
+  },
+  "resource": {
+    "share": "Share",
+    "report": "Report",
+    "addToList": "Add to a list"
+  },
+  "offline": {
+    "cache": "Offline (cached)"
+  },
+  "widgets": {
+    "title": "Widgets",
+    "stub": "Widget data preview (native home-screen widgets deferred)"
+  },
+  "lock": {
+    "title": "App locked",
+    "hint": "Use biometrics or your device passcode to continue.",
+    "unlock": "Unlock"
+  }
+}

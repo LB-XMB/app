@@ -5,8 +5,10 @@ import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 
+import { AppLockGate } from '@/components/AppLockGate';
 import { AppProviders } from '@/components/providers/AppProviders';
 import { WhatsNewSheet } from '@/components/WhatsNewSheet';
+import '@/i18n';
 import { useSessionStore } from '@/stores/session';
 import { useSettingsStore } from '@/stores/settings';
 import { fontAssets, useTheme } from '@/ui/theme';
@@ -24,7 +26,7 @@ function RootNavigator() {
   }, [colors.background]);
 
   return (
-    <>
+    <AppLockGate>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
@@ -33,12 +35,10 @@ function RootNavigator() {
           animation: 'slide_from_right',
         }}
       >
-        {/* The privacy screen is the only reachable route until it is answered. */}
         <Stack.Protected guard={consent === 'unset'}>
           <Stack.Screen name="bienvenue" options={{ animation: 'fade' }} />
         </Stack.Protected>
 
-        {/* Signing in comes right after, and can be skipped for good. */}
         <Stack.Protected guard={consent !== 'unset' && signInPrompt === 'unset'}>
           <Stack.Screen name="connexion" options={{ animation: 'fade' }} />
         </Stack.Protected>
@@ -56,6 +56,7 @@ function RootNavigator() {
           <Stack.Screen name="historique" />
           <Stack.Screen name="parametres" />
           <Stack.Screen name="a-propos" />
+          <Stack.Screen name="widgets" />
           <Stack.Screen name="compte" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="forum/index" />
           <Stack.Screen name="forum/[id]" />
@@ -63,7 +64,8 @@ function RootNavigator() {
           <Stack.Screen name="actualites" />
         </Stack.Protected>
       </Stack>
-    </>
+      <WhatsNewSheet />
+    </AppLockGate>
   );
 }
 
@@ -74,13 +76,11 @@ export default function RootLayout() {
     if (fontsLoaded || fontError) void SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
 
-  // Rendering before the fonts resolve would flash system typography.
   if (!fontsLoaded && !fontError) return null;
 
   return (
     <AppProviders>
       <RootNavigator />
-      <WhatsNewSheet />
     </AppProviders>
   );
 }

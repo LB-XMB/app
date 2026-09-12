@@ -44,6 +44,8 @@ const config: ExpoConfig = {
       UIViewControllerBasedStatusBarAppearance: true,
       // The app never opens a local server, only https endpoints.
       NSAppTransportSecurity: { NSAllowsArbitraryLoads: false },
+      NSFaceIDUsageDescription:
+        'LB’XMB utilise Face ID pour déverrouiller l’application lorsque le verrouillage est activé.',
     },
   },
   android: {
@@ -135,6 +137,8 @@ const config: ExpoConfig = {
     'expo-web-browser',
     'expo-sharing',
     'expo-secure-store',
+    'expo-localization',
+    'expo-local-authentication',
     [
       'expo-notifications',
       {

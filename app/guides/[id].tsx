@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RichText } from '@/components/guides/RichText';
 import { HeaderAction, ScreenHeader } from '@/components/layout/ScreenHeader';
+import { OfflineCacheBanner } from '@/components/layout/OfflineCacheBanner';
 import { ReportSheet } from '@/components/resources/ReportSheet';
 import { useGuide } from '@/hooks/useGuides';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
@@ -31,9 +32,10 @@ export default function GuideDetailScreen() {
   useScreenTracking('/guides/detail');
   const [reportVisible, setReportVisible] = useState(false);
 
-  const { data: guide, isLoading, isError, error, refetch } = useGuide(id);
+  const { data: guide, isLoading, isError, error, refetch, isFetching } = useGuide(id);
+  const showOfflineCache = Boolean(guide) && isError && !isFetching;
 
-  if (isLoading) {
+  if (isLoading && !guide) {
     return (
       <Screen>
         <ScreenHeader title="Guide" />
@@ -47,7 +49,7 @@ export default function GuideDetailScreen() {
     );
   }
 
-  if (isError || !guide) {
+  if (!guide) {
     return (
       <Screen>
         <ScreenHeader title="Guide" />
@@ -84,6 +86,8 @@ export default function GuideDetailScreen() {
           </>
         }
       />
+
+      <OfflineCacheBanner visible={showOfflineCache} />
 
       <ScrollView
         contentContainerStyle={[

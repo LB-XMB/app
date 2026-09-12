@@ -5,16 +5,20 @@ import {
   ExternalLink,
   FileLock2,
   HardDrive,
+  Languages,
+  Lock,
   Moon,
   Smartphone,
   Sun,
   Trash2,
   Vibrate,
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { canUseAppLock } from '@/components/AppLockGate';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { WEB_URLS } from '@/services/api';
@@ -31,13 +35,20 @@ import {
 } from '@/ui/components';
 import { screenPadding, spacing, useColors } from '@/ui/theme';
 
-const THEMES: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
-  { value: 'auto', label: 'Système', icon: Smartphone },
-  { value: 'dark', label: 'Sombre', icon: Moon },
-  { value: 'light', label: 'Clair', icon: Sun },
+const THEMES: { value: ThemePreference; icon: typeof Sun }[] = [
+  { value: 'auto', icon: Smartphone },
+  { value: 'dark', icon: Moon },
+  { value: 'light', icon: Sun },
+];
+
+const LANGS: { value: 'system' | 'fr' | 'en'; labelKey: string }[] = [
+  { value: 'system', labelKey: 'settings.langSystem' },
+  { value: 'fr', labelKey: 'settings.langFr' },
+  { value: 'en', labelKey: 'settings.langEn' },
 ];
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   useScreenTracking('/parametres');
@@ -53,8 +64,17 @@ export default function SettingsScreen() {
   const setDownloadNotifications = useSettingsStore((state) => state.setDownloadNotifications);
   const forumInboxEnabled = useSettingsStore((state) => state.forumInboxEnabled);
   const setForumInboxEnabled = useSettingsStore((state) => state.setForumInboxEnabled);
+  const appLockEnabled = useSettingsStore((state) => state.appLockEnabled);
+  const setAppLockEnabled = useSettingsStore((state) => state.setAppLockEnabled);
+  const language = useSettingsStore((state) => state.language);
+  const setLanguage = useSettingsStore((state) => state.setLanguage);
 
   const [cacheSize, setCacheSize] = useState(() => downloadedBytes());
+  const [lockAvailable, setLockAvailable] = useState(false);
+
+  useEffect(() => {
+    void canUseAppLock().then(setLockAvailable);
+  }, []);
 
   const clearCache = () => {
     Alert.alert(
@@ -74,9 +94,15 @@ export default function SettingsScreen() {
     );
   };
 
+  const themeLabel = (value: ThemePreference) => {
+    if (value === 'auto') return t('settings.langSystem');
+    if (value === 'dark') return 'Sombre';
+    return 'Clair';
+  };
+
   return (
     <Screen>
-      <ScreenHeader title="Paramètres" />
+      <ScreenHeader title={t('settings.title')} />
 
       <ScrollView
         contentContainerStyle={[
@@ -86,11 +112,11 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.group}>
-          <ListSectionTitle>Notifications</ListSectionTitle>
+          <ListSectionTitle>{t('settings.notifications')}</ListSectionTitle>
           <List>
             <List.Item
-              title="Notifs téléchargements"
-              subtitle="Alerte locale quand un fichier est prêt"
+              title={t('settings.downloadNotifs')}
+              subtitle={t('settings.downloadNotifsHint')}
               leading={<IconBadge icon={Bell} color={colors.accent} size={30} />}
               trailing={
                 <Switch
@@ -105,8 +131,8 @@ export default function SettingsScreen() {
               }
             />
             <List.Item
-              title="Alertes forum (inbox)"
-              subtitle="Charge l’inbox API quand tu es connecté — pas de push distant"
+              title={t('settings.forumInbox')}
+              subtitle={t('settings.forumInboxHint')}
               leading={<IconBadge icon={Bell} color={colors.warning} size={30} />}
               trailing={
                 <Switch
@@ -124,14 +150,60 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.group}>
-          <ListSectionTitle>Apparence</ListSectionTitle>
+          <ListSectionTitle>{t('settings.security')}</ListSectionTitle>
+          <List>
+            <List.Item
+              title={t('settings.appLock')}
+              subtitle={
+                lockAvailable ? t('settings.appLockHint') : t('settings.appLockUnavailable')
+              }
+              leading={<IconBadge icon={Lock} color={colors.primary} size={30} />}
+              trailing={
+                <Switch
+                  value={appLockEnabled && lockAvailable}
+                  disabled={!lockAvailable}
+                  onValueChange={setAppLockEnabled}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                  thumbColor={colors.onPrimary}
+                />
+              }
+            />
+          </List>
+        </View>
+
+        <View style={styles.group}>
+          <ListSectionTitle>{t('settings.language')}</ListSectionTitle>
           <View style={styles.chips}>
-            {THEMES.map(({ value, label, icon: ThemeIcon }) => {
+            {LANGS.map(({ value, labelKey }) => {
+              const selected = language === value;
+              return (
+                <Chip
+                  key={value}
+                  label={t(labelKey)}
+                  selected={selected}
+                  onPress={() => setLanguage(value)}
+                  leading={
+                    <Languages
+                      size={13}
+                      color={selected ? colors.onPrimary : colors.textSecondary}
+                      strokeWidth={2.4}
+                    />
+                  }
+                />
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.group}>
+          <ListSectionTitle>{t('settings.appearance')}</ListSectionTitle>
+          <View style={styles.chips}>
+            {THEMES.map(({ value, icon: ThemeIcon }) => {
               const selected = theme === value;
               return (
                 <Chip
                   key={value}
-                  label={label}
+                  label={themeLabel(value)}
                   selected={selected}
                   onPress={() => setTheme(value)}
                   leading={
@@ -147,8 +219,8 @@ export default function SettingsScreen() {
           </View>
           <List>
             <List.Item
-              title="Retours haptiques"
-              subtitle="Vibration légère à chaque appui"
+              title={t('settings.haptics')}
+              subtitle={t('settings.hapticsHint')}
               leading={<IconBadge icon={Vibrate} color={colors.primary} size={30} />}
               trailing={
                 <Switch
@@ -163,7 +235,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.group}>
-          <ListSectionTitle>Confidentialité</ListSectionTitle>
+          <ListSectionTitle>{t('settings.privacy')}</ListSectionTitle>
           <List>
             <List.Item
               title="Statistiques d’usage"

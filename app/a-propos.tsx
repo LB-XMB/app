@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Code2, ExternalLink, Globe, Scale, ServerCog, Sparkles } from 'lucide-react-native';
+import { Code2, ExternalLink, Globe, LayoutGrid, Scale, ServerCog, Sparkles } from 'lucide-react-native';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -22,6 +23,7 @@ const PLATFORM_LABELS: Partial<Record<typeof Platform.OS, string>> = {
 };
 
 export default function AboutScreen() {
+  const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   useScreenTracking('/a-propos');
@@ -67,6 +69,12 @@ export default function AboutScreen() {
                 onPress={() => setNotesOpen(true)}
               />
             ) : null}
+            <List.Item
+              title="Widgets"
+              subtitle="Aperçu données Populaires / Stats"
+              leading={<IconBadge icon={LayoutGrid} color={colors.accent} size={30} />}
+              onPress={() => router.push('/widgets')}
+            />
             <List.Item
               title="Site web"
               subtitle={API_BASE_URL.replace('https://', '')}

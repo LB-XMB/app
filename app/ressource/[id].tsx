@@ -19,6 +19,7 @@ import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HeaderAction, ScreenHeader } from '@/components/layout/ScreenHeader';
+import { OfflineCacheBanner } from '@/components/layout/OfflineCacheBanner';
 import { AddToListSheet } from '@/components/resources/AddToListSheet';
 import { DownloadSheet } from '@/components/resources/DownloadSheet';
 import { MediaGallery } from '@/components/resources/MediaGallery';
@@ -48,7 +49,8 @@ export default function ResourceDetailScreen() {
   const insets = useSafeAreaInsets();
   useScreenTracking('/ressource');
 
-  const { data: resource, isLoading, isError, error, refetch } = useResource(id);
+  const { data: resource, isLoading, isError, error, refetch, isFetching } = useResource(id);
+  const showOfflineCache = Boolean(resource) && isError && !isFetching;
   const [sheetVisible, setSheetVisible] = useState(false);
   const [listVisible, setListVisible] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
@@ -110,7 +112,7 @@ export default function ResourceDetailScreen() {
     });
   };
 
-  if (isLoading) {
+  if (isLoading && !resource) {
     return (
       <Screen>
         <ScreenHeader />
@@ -125,7 +127,7 @@ export default function ResourceDetailScreen() {
     );
   }
 
-  if (isError || !resource) {
+  if (!resource) {
     return (
       <Screen>
         <ScreenHeader title="Ressource" />
@@ -186,6 +188,8 @@ export default function ResourceDetailScreen() {
           </>
         }
       />
+
+      <OfflineCacheBanner visible={showOfflineCache} />
 
       <ScrollView
         contentContainerStyle={[

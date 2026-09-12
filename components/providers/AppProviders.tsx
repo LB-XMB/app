@@ -1,18 +1,23 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { QueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ApiError } from '@/services/api';
+import {
+  QUERY_CACHE_MAX_AGE,
+  queryPersister,
+  shouldPersistQuery,
+} from '@/services/queryPersist';
 import { ThemeProvider } from '@/ui/theme';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 2 * 60 * 1000,
-      gcTime: 30 * 60 * 1000,
+      gcTime: QUERY_CACHE_MAX_AGE,
       retry: (failureCount, error) => {
-        // A missing resource will never appear on retry.
         if (error instanceof ApiError && error.isNotFound) return false;
         return failureCount < 2;
       },
@@ -26,9 +31,19 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{
+            persister: queryPersister,
+            maxAge: QUERY_CACHE_MAX_AGE,
+            dehydrateOptions: {
+              shouldDehydrateQuery: (query) =>
+                query.state.status === 'success' && shouldPersistQuery(query.queryKey),
+            },
+          }}
+        >
           <ThemeProvider>{children}</ThemeProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
