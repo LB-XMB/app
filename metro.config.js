@@ -9,13 +9,21 @@ const shims = {
   tls: path.resolve(__dirname, 'shims/tls.js'),
   fs: path.resolve(__dirname, 'shims/fs.js'),
   crypto: path.resolve(__dirname, 'shims/crypto.js'),
+  http: path.resolve(__dirname, 'shims/http.js'),
+  https: path.resolve(__dirname, 'shims/http.js'),
+  // Trailing `/` forces the npm package path: bare names hit Node core
+  // modules (`require.resolve('buffer')` === `'buffer'`) and Metro SHA-1 fails.
   stream: require.resolve('readable-stream'),
-  buffer: require.resolve('buffer'),
-  events: require.resolve('events'),
-  string_decoder: require.resolve('string_decoder'),
+  buffer: require.resolve('buffer/'),
+  events: require.resolve('events/'),
+  string_decoder: require.resolve('string_decoder/'),
+  util: require.resolve('util/'),
+  assert: require.resolve('assert/'),
   zlib: require.resolve('browserify-zlib'),
   path: require.resolve('path-browserify'),
   'cpu-features': path.resolve(__dirname, 'shims/empty.js'),
+  // Keep real ssh2 out of the JS bundle (Node-only); FTP path uses ftp-ts.
+  'ssh2-sftp-client': path.resolve(__dirname, 'shims/ssh2-sftp-client.js'),
 };
 
 config.resolver.extraNodeModules = {

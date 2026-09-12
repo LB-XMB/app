@@ -10,6 +10,7 @@
 - Listes locales, signalement, inbox forum, profils publics
 - Cache hors-ligne des fiches / guides, verrouillage biométrique, i18n EN
 - Préparation widgets (aperçu données) ; passkeys restent via le site
+- Correctif build Android (polyfills Metro / stub SFTP)
 
 ## 1.0.7
 
