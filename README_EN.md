@@ -5,7 +5,7 @@
 <h1 align="center">LB’XMB — Mobile app</h1>
 
 <p align="center">
-  <a href="README.md">Français</a> · English
+  <a href="https://git.lbxmb.fr/lbxmb/app/src/branch/main/README.md">Français</a> · English
 </p>
 
 <p align="center">
