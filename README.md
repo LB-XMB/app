@@ -57,7 +57,7 @@
 | **Manuel** | APK / IPA sur la [page des releases](https://git.lbxmb.fr/lbxmb/app/releases). |
 
 <p align="center">
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22fr.lbxmb.app%22%2C%22url%22%3A%22https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%22%2C%22author%22%3A%22LB%27XMB%22%2C%22name%22%3A%22LB%27XMB%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22overrideSource%5C%22%3A%5C%22Forgejo%20%28Codeberg%29%5C%22%2C%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22android%5C%5C%5C%5C.apk%24%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22about%5C%22%3A%5C%22Catalogue%20communautaire%20de%20modding%20console.%20Releases%20%3A%20https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%2Freleases%5C%22%7D%22%7D"><img src="https://img.shields.io/badge/Obtenir_sur-Obtainium-2E7D32?style=for-the-badge&logo=android&logoColor=white" alt="Obtainium" /></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22fr.lbxmb.app%22%2C%22url%22%3A%22https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%22%2C%22author%22%3A%22LB%27XMB%22%2C%22name%22%3A%22LB%27XMB%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22overrideSource%5C%22%3A%5C%22Forgejo%20%28Codeberg%29%5C%22%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22_android%5C%5C%5C%5C.apk%24%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22Catalogue%20communautaire%20de%20modding%20console.%5C%5CnAPK%20%3A%20https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%2Freleases%5C%22%7D%22%7D"><img src="https://img.shields.io/badge/Obtenir_sur-Obtainium-2E7D32?style=for-the-badge&logo=android&logoColor=white" alt="Obtainium" /></a>
   &nbsp;
   <a href="sidestore://source?url=https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%2Fraw%2Fbranch%2Fmain%2Fstore%2Fsidestore.json"><img src="https://img.shields.io/badge/Ajouter_dans-SideStore-5C6BC0?style=for-the-badge&logo=apple&logoColor=white" alt="SideStore" /></a>
   &nbsp;
@@ -66,7 +66,7 @@
 
 Configs : [`store/obtainium.json`](./store/obtainium.json), [`store/sidestore.json`](./store/sidestore.json).
 
-> **Obtainium** : si l’ajout échoue, crée l’app à la main avec l’URL du dépôt (sans `/releases` dans le champ principal) et choisis la source **Forgejo (Codeberg)**. Les fichiers `.apk` sont listés sur [`/releases`](https://git.lbxmb.fr/lbxmb/app/releases) / [`/releases/latest`](https://git.lbxmb.fr/lbxmb/app/releases/latest).
+> **Obtainium** : ouvre le badge, ou ajoute à la main `https://git.lbxmb.fr/lbxmb/app` (**sans** `/releases`) avec la source **Forgejo (Codeberg)**. Laisse *Fallback to older releases* activé : la dernière release peut ne pas avoir d’APK tant que le build Android n’a pas fini. Config : [`store/obtainium.json`](./store/obtainium.json).
 
 ## Ce que fait l’application
 
