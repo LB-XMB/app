@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { Package } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { siteUrl, uploadUrl } from '@/services/api';
@@ -37,6 +37,11 @@ export function ResourceIcon({
     [logo, logoVersion, siteAsset]
   );
 
+  // FlashList recycles cells: reset error state when the bound logo changes.
+  useEffect(() => {
+    setFailed(false);
+  }, [uri]);
+
   return (
     <View
       style={[
@@ -54,9 +59,10 @@ export function ResourceIcon({
       {uri && !failed ? (
         <Image
           source={{ uri }}
+          recyclingKey={uri}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
-          transition={180}
+          transition={0}
           cachePolicy="memory-disk"
           onError={() => setFailed(true)}
         />

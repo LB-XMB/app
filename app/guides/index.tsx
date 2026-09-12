@@ -118,11 +118,10 @@ export default function GuidesScreen() {
             <View key={section.label} style={styles.section}>
               <ListSectionTitle>{section.label}</ListSectionTitle>
               <View style={styles.rows}>
-                {section.guides.map((guide, index) => (
+                {section.guides.map((guide) => (
                   <GuideRow
                     key={guide.id}
                     guide={guide}
-                    delay={Math.min(index, 6) * 40}
                     onPress={() => router.push(`/guides/${guide.id}`)}
                   />
                 ))}

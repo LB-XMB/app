@@ -19,9 +19,7 @@ export default function NewsScreen() {
 
   const news = useNewsInfinite();
 
-  const renderItem = ({ item, index }: { item: NewsItem; index: number }) => (
-    <NewsRow item={item} delay={Math.min(index, 8) * 35} />
-  );
+  const renderItem = ({ item }: { item: NewsItem }) => <NewsRow item={item} />;
 
   return (
     <Screen>

@@ -166,11 +166,10 @@ export default function SearchScreen() {
               <View key={group.type} style={styles.group}>
                 <ListSectionTitle>{TYPE_LABELS[group.type]}</ListSectionTitle>
                 <View style={styles.hits}>
-                  {group.hits.map((hit, index) => (
+                  {group.hits.map((hit) => (
                     <SearchHitRow
                       key={`${hit.type}-${hit.id}-${hit.href}`}
                       hit={hit}
-                      delay={index * 35}
                       onPress={() => openHit(hit)}
                     />
                   ))}

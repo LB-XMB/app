@@ -99,7 +99,7 @@ export default function HomeScreen() {
             />
             <View style={styles.rows}>
               {news.data?.map((item, index) => (
-                <NewsRow key={item.id} item={item} delay={index * 40} />
+                <NewsRow key={item.id} item={item} />
               ))}
             </View>
           </View>
@@ -145,11 +145,10 @@ export default function HomeScreen() {
             <ErrorState error={recent.error} onRetry={() => void recent.refetch()} />
           ) : (
             <View style={styles.rows}>
-              {recent.data?.items.map((resource, index) => (
+              {recent.data?.items.map((resource) => (
                 <ResourceRow
                   key={resource.id}
                   resource={resource}
-                  delay={index * 50}
                   onPress={() => router.push(`/ressource/${resource.id}`)}
                 />
               ))}
@@ -166,11 +165,10 @@ export default function HomeScreen() {
               onAction={() => router.push('/guides')}
             />
             <View style={styles.rows}>
-              {latestGuides.map((guide, index) => (
+              {latestGuides.map((guide) => (
                 <GuideRow
                   key={guide.id}
                   guide={guide}
-                  delay={index * 50}
                   onPress={() => router.push(`/guides/${guide.id}`)}
                 />
               ))}

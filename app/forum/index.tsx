@@ -44,10 +44,9 @@ export default function ForumScreen() {
   const query = useMemo(() => ({ categoryId: categoryId ?? undefined, sort }), [categoryId, sort]);
   const threads = useForumThreadsInfinite(query);
 
-  const renderItem = ({ item, index }: { item: ForumThread; index: number }) => (
+  const renderItem = ({ item }: { item: ForumThread }) => (
     <ThreadRow
       thread={item}
-      delay={Math.min(index, 8) * 35}
       onPress={() => router.push(`/forum/${item.id}`)}
     />
   );

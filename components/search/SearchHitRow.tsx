@@ -7,9 +7,8 @@ import {
   User,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Reanimated, { FadeIn } from 'react-native-reanimated';
 
 import type { SearchHit, SearchHitType } from '@/services/api';
 import { siteUrl } from '@/services/api';
@@ -37,57 +36,59 @@ export const TYPE_LABELS: Record<SearchHitType, string> = {
 export interface SearchHitRowProps {
   hit: SearchHit;
   onPress: () => void;
-  delay?: number;
 }
 
-export function SearchHitRow({ hit, onPress, delay = 0 }: SearchHitRowProps) {
+export function SearchHitRow({ hit, onPress }: SearchHitRowProps) {
   const colors = useColors();
   const [imageFailed, setImageFailed] = useState(false);
   const Icon = TYPE_ICONS[hit.type];
   const tint = hit.platform ? platformColor(hit.platform) : colors.primary;
   const uri = siteUrl(hit.iconUrl);
 
-  return (
-    <Reanimated.View entering={FadeIn.duration(200).delay(delay)}>
-      <AnimatedPressable
-        onPress={onPress}
-        scale={0.985}
-        style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}
-        accessibilityRole="button"
-        accessibilityLabel={hit.title}
-      >
-        <View
-          style={[
-            styles.icon,
-            { backgroundColor: uri && !imageFailed ? colors.item : `${tint}1F` },
-          ]}
-        >
-          {uri && !imageFailed ? (
-            <Image
-              source={{ uri }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              transition={140}
-              cachePolicy="memory-disk"
-              onError={() => setImageFailed(true)}
-            />
-          ) : (
-            <Icon size={17} color={tint} strokeWidth={2.2} />
-          )}
-        </View>
+  useEffect(() => {
+    setImageFailed(false);
+  }, [uri]);
 
-        <View style={styles.body}>
-          <Typography variant="title" numberOfLines={1}>
-            {hit.title.trim()}
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      scale={0.985}
+      style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}
+      accessibilityRole="button"
+      accessibilityLabel={hit.title}
+    >
+      <View
+        style={[
+          styles.icon,
+          { backgroundColor: uri && !imageFailed ? colors.item : `${tint}1F` },
+        ]}
+      >
+        {uri && !imageFailed ? (
+          <Image
+            source={{ uri }}
+            recyclingKey={uri}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={0}
+            cachePolicy="memory-disk"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <Icon size={17} color={tint} strokeWidth={2.2} />
+        )}
+      </View>
+
+      <View style={styles.body}>
+        <Typography variant="title" numberOfLines={1}>
+          {hit.title.trim()}
+        </Typography>
+        {hit.subtitle ? (
+          <Typography variant="caption" color="secondary" numberOfLines={1}>
+            {hit.subtitle}
           </Typography>
-          {hit.subtitle ? (
-            <Typography variant="caption" color="secondary" numberOfLines={1}>
-              {hit.subtitle}
-            </Typography>
-          ) : null}
-        </View>
-      </AnimatedPressable>
-    </Reanimated.View>
+        ) : null}
+      </View>
+    </AnimatedPressable>
   );
 }
 

@@ -1,7 +1,5 @@
 import { Eye, Lock, MessageCircle, Pin, ThumbsUp } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
-import Reanimated, { FadeInDown } from 'react-native-reanimated';
-
 import { forumExcerpt, type ForumThread } from '@/services/api';
 import { AnimatedPressable, Chip, Typography } from '@/ui/components';
 import { radius, spacing, useColors } from '@/ui/theme';
@@ -12,17 +10,15 @@ import { ForumDate } from './ForumDate';
 export interface ThreadRowProps {
   thread: ForumThread;
   onPress: () => void;
-  delay?: number;
 }
 
 /** Row of the forum thread list. */
-export function ThreadRow({ thread, onPress, delay = 0 }: ThreadRowProps) {
+export function ThreadRow({ thread, onPress }: ThreadRowProps) {
   const colors = useColors();
   const tint = thread.category.color ?? colors.primary;
   const excerpt = forumExcerpt(thread.content, 140);
 
   return (
-    <Reanimated.View entering={FadeInDown.duration(360).delay(delay).springify().damping(18)}>
       <AnimatedPressable
         onPress={onPress}
         scale={0.985}
@@ -64,7 +60,6 @@ export function ThreadRow({ thread, onPress, delay = 0 }: ThreadRowProps) {
           </View>
         </View>
       </AnimatedPressable>
-    </Reanimated.View>
   );
 }
 

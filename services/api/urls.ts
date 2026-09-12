@@ -25,7 +25,13 @@ export function uploadUrl(
   const encoded = relative
     .split('/')
     .filter(Boolean)
-    .map((segment) => encodeURIComponent(decodeURIComponent(segment)))
+    .map((segment) => {
+      try {
+        return encodeURIComponent(decodeURIComponent(segment));
+      } catch {
+        return encodeURIComponent(segment);
+      }
+    })
     .join('/');
 
   const base = `${API_BASE_URL}/api/uploads/${encoded}`;

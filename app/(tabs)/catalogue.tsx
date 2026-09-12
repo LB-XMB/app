@@ -31,6 +31,10 @@ import { platformColor, screenPadding, spacing, tabBarHeight, tabBarInset, useCo
 /** Half of the space between two grid columns. */
 const GRID_GUTTER = spacing.md / 2;
 
+function CatalogueSeparator() {
+  return <View style={styles.separator} />;
+}
+
 export default function CatalogueScreen() {
   const router = useRouter();
   const colors = useColors();
@@ -77,20 +81,18 @@ export default function CatalogueScreen() {
   const isGrid = layout === 'grid';
 
   const renderItem = useCallback(
-    ({ item, index }: { item: Resource; index: number }) =>
+    ({ item }: { item: Resource }) =>
       isGrid ? (
         // FlashList has no column gap, so each cell pads its own gutter.
         <View style={styles.gridCell}>
           <ResourceCard
             resource={item}
-            delay={Math.min(index, 8) * 40}
             onPress={() => router.push(`/ressource/${item.id}`)}
           />
         </View>
       ) : (
         <ResourceRow
           resource={item}
-          delay={Math.min(index, 8) * 40}
           onPress={() => router.push(`/ressource/${item.id}`)}
         />
       ),
@@ -208,7 +210,7 @@ export default function CatalogueScreen() {
             paddingHorizontal: isGrid ? screenPadding - GRID_GUTTER : screenPadding,
             paddingBottom: insets.bottom + tabBarHeight + tabBarInset + spacing.xl,
           }}
-          ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+          ItemSeparatorComponent={CatalogueSeparator}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
@@ -298,6 +300,9 @@ const styles = StyleSheet.create({
   gridCell: {
     flex: 1,
     paddingHorizontal: GRID_GUTTER,
+  },
+  separator: {
+    height: spacing.md,
   },
   footerLoader: {
     paddingVertical: spacing.xl,

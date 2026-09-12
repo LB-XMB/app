@@ -50,10 +50,9 @@ export default function FavoritesScreen() {
             onAction={() => router.push('/catalogue')}
           />
         ) : (
-          items.map((item, index) => (
+          items.map((item) => (
             <ResourceRow
               key={item.id}
-              delay={Math.min(index, 8) * 40}
               resource={{
                 id: item.id,
                 title: item.title,
