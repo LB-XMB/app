@@ -108,9 +108,10 @@ export default function FtpScreen() {
     setStatus('Connexion…');
     const next = new FtpClient({
       host: target.host.trim(),
-      port: target.port || 21,
+      port: target.port || (target.protocol === 'sftp' ? 22 : 21),
       user: target.user.trim(),
       password: target.password,
+      protocol: target.protocol || 'ftp',
     });
 
     try {
@@ -251,9 +252,11 @@ export default function FtpScreen() {
       <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
         <View style={styles.headerTop}>
           <View style={styles.headerTitles}>
-            <Typography variant="h1">FTP</Typography>
+            <Typography variant="h1">FTP / SFTP</Typography>
             <Typography variant="caption" color="secondary">
-              {connected ? status ?? path : 'Envoie un PKG directement à ta console'}
+              {connected
+                ? status ?? path
+                : 'Envoie un PKG à ta console (FTP) ou vers un serveur SFTP'}
             </Typography>
           </View>
           {connected ? (
@@ -276,6 +279,19 @@ export default function FtpScreen() {
             { paddingBottom: insets.bottom + tabBarHeight + tabBarInset + spacing.xl },
           ]}
         >
+          <View style={styles.protocolRow}>
+            <ProtocolChip
+              label="FTP"
+              active={target.protocol !== 'sftp'}
+              onPress={() => setTarget({ protocol: 'ftp' })}
+            />
+            <ProtocolChip
+              label="SFTP"
+              active={target.protocol === 'sftp'}
+              onPress={() => setTarget({ protocol: 'sftp' })}
+            />
+          </View>
+
           <Field
             label="Adresse IP"
             value={target.host}
@@ -286,8 +302,12 @@ export default function FtpScreen() {
           <Field
             label="Port"
             value={String(target.port)}
-            onChangeText={(value) => setTarget({ port: Number(value) || 21 })}
-            placeholder="21"
+            onChangeText={(value) =>
+              setTarget({
+                port: Number(value) || (target.protocol === 'sftp' ? 22 : 21),
+              })
+            }
+            placeholder={target.protocol === 'sftp' ? '22' : '21'}
             keyboardType="number-pad"
           />
           <Field
@@ -315,9 +335,9 @@ export default function FtpScreen() {
           />
 
           <Typography variant="caption" color="tertiary">
-            La console et le téléphone doivent être sur le même Wi-Fi (pas de VPN / données
-            mobiles). Démarre le serveur FTP sur la console (Multiman, webMAN, GoldHEN…)
-            avant de te connecter — le port 21 est le plus courant.
+            {target.protocol === 'sftp'
+              ? 'SFTP s’appuie sur ssh2 — réservé aux serveurs SSH. Pour PS3/PS4 (Multiman, webMAN, GoldHEN), choisis FTP.'
+              : 'La console et le téléphone doivent être sur le même Wi-Fi (pas de VPN / données mobiles). Démarre le serveur FTP sur la console avant de te connecter — le port 21 est le plus courant.'}
           </Typography>
         </View>
       ) : (
@@ -416,6 +436,35 @@ export default function FtpScreen() {
   );
 }
 
+function ProtocolChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const colors = useColors();
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      scale={0.96}
+      style={[
+        styles.protocolChip,
+        {
+          backgroundColor: active ? `${colors.primary}22` : colors.card,
+          borderColor: active ? colors.primary : colors.border,
+        },
+      ]}
+    >
+      <Typography variant="captionStrong" color={active ? 'primary' : 'secondary'}>
+        {label}
+      </Typography>
+    </AnimatedPressable>
+  );
+}
+
 function Field({
   label,
   ...input
@@ -457,6 +506,19 @@ const styles = StyleSheet.create({
   form: {
     paddingHorizontal: screenPadding,
     gap: spacing.lg,
+  },
+  protocolRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  protocolChip: {
+    flex: 1,
+    height: 40,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
+    borderWidth: StyleSheet.hairlineWidth * 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   field: {
     gap: spacing.sm,
