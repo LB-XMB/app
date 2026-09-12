@@ -36,11 +36,15 @@ type TcpSocket = {
   setEncoding?: (encoding: string) => void;
 };
 
+type TcpConnectOptions = {
+  host: string;
+  port: number;
+  connectTimeout?: number;
+  interface?: 'wifi' | 'cellular' | 'ethernet';
+};
+
 type TcpModule = {
-  createConnection: (
-    options: { host: string; port: number },
-    callback?: () => void
-  ) => TcpSocket;
+  createConnection: (options: TcpConnectOptions, callback?: () => void) => TcpSocket;
 };
 
 function loadTcp(): TcpModule {
@@ -56,6 +60,63 @@ function loadTcp(): TcpModule {
       'Le module FTP natif n’est pas installé. Relance un build natif après npm install.'
     );
   }
+}
+
+/** Strip scheme / path / brackets so tcp-socket always gets a bare IPv4 host. */
+export function normalizeFtpHost(raw: string): string {
+  let host = raw.trim();
+  host = host.replace(/^https?:\/\//i, '');
+  host = host.replace(/\/.*$/, '');
+  host = host.replace(/^\[|\]$/g, '');
+  // Drop accidental ":port" if the user pasted host:port into the IP field.
+  if (/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(host)) {
+    host = host.split(':')[0]!;
+  }
+  return host;
+}
+
+function socketOptions(host: string, port: number): TcpConnectOptions {
+  const options: TcpConnectOptions = {
+    host,
+    port,
+    connectTimeout: 12_000,
+  };
+  // Prefer Wi-Fi on Android so the stack does not bind via cellular / IPv6 (::).
+  if (Platform.OS === 'android') {
+    options.interface = 'wifi';
+  }
+  return options;
+}
+
+function humanizeSocketError(error: unknown, host: string, port: number): FtpError {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+
+  if (lower.includes('econnrefused') || lower.includes('connection refused')) {
+    return new FtpError(
+      `Rien n’écoute sur ${host}:${port}. Sur la console, démarre le serveur FTP (Multiman / webMAN / GoldHEN) et vérifie le port.`
+    );
+  }
+  if (lower.includes('etimedout') || lower.includes('timed out') || lower.includes('timeout')) {
+    return new FtpError(
+      `Délai dépassé vers ${host}:${port}. Vérifie que le téléphone et la console sont sur le même Wi-Fi (pas de VPN).`
+    );
+  }
+  if (
+    lower.includes('enetunreach') ||
+    lower.includes('ehostunreach') ||
+    lower.includes('network is unreachable') ||
+    lower.includes('no route')
+  ) {
+    return new FtpError(
+      `Réseau injoignable (${host}). Vérifie l’IP locale de la console et que le Wi-Fi n’isole pas les appareils.`
+    );
+  }
+  if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
+    return new FtpError(`Adresse invalide : « ${host} ». Utilise une IP du type 192.168.x.x.`);
+  }
+
+  return new FtpError(message);
 }
 
 function joinFtpPath(base: string, name: string): string {
@@ -78,22 +139,45 @@ export class FtpClient {
     resolve: (line: string) => void;
     reject: (error: Error) => void;
   }> = [];
+  private readonly host: string;
+  private readonly port: number;
+  private readonly user: string;
+  private readonly password: string;
 
-  constructor(private readonly credentials: FtpCredentials) {}
+  constructor(credentials: FtpCredentials) {
+    this.host = normalizeFtpHost(credentials.host);
+    this.port = credentials.port;
+    // Multiman / webMAN acceptent souvent un identifiant vide.
+    this.user = credentials.user.trim() || 'anonymous';
+    this.password = credentials.password;
+  }
 
   async connect(): Promise<void> {
+    if (!this.host) {
+      throw new FtpError('Indique l’adresse IP de ta console.');
+    }
+    if (!Number.isFinite(this.port) || this.port < 1 || this.port > 65535) {
+      throw new FtpError('Port FTP invalide.');
+    }
+
     const tcp = loadTcp();
     await new Promise<void>((resolve, reject) => {
-      const socket = tcp.createConnection(
-        { host: this.credentials.host, port: this.credentials.port },
-        () => resolve()
-      );
+      let settled = false;
+      const socket = tcp.createConnection(socketOptions(this.host, this.port), () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      });
       this.control = socket;
       socket.setEncoding?.('utf8');
       socket.on('data', (chunk) => this.onData(String(chunk)));
       socket.on('error', (error) => {
-        this.failAll(error instanceof Error ? error : new FtpError(String(error)));
-        reject(error instanceof Error ? error : new FtpError(String(error)));
+        const mapped = humanizeSocketError(error, this.host, this.port);
+        this.failAll(mapped);
+        if (!settled) {
+          settled = true;
+          reject(mapped);
+        }
       });
       socket.on('close', () => {
         this.failAll(new FtpError('Connexion FTP fermée.'));
@@ -102,9 +186,9 @@ export class FtpClient {
     });
 
     await this.expect(/^220/);
-    await this.send(`USER ${this.credentials.user}`, /^331|^230/);
+    await this.send(`USER ${this.user}`, /^331|^230/);
     if (!/230/.test(this.buffer)) {
-      await this.send(`PASS ${this.credentials.password}`, /^230/);
+      await this.send(`PASS ${this.password}`, /^230/);
     }
     await this.send('TYPE I', /^200/);
     await this.send('OPTS UTF8 ON', /^200|^202|^500|^502/).catch(() => undefined);
@@ -152,8 +236,12 @@ export class FtpClient {
     const reply = await this.send('PASV', /^227/);
     const match = reply.match(/\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
     if (!match) throw new FtpError('Réponse PASV illisible.');
-    const host = `${match[1]}.${match[2]}.${match[3]}.${match[4]}`;
+    let host = `${match[1]}.${match[2]}.${match[3]}.${match[4]}`;
     const port = Number(match[5]) * 256 + Number(match[6]);
+    // Certaines consoles renvoient 0.0.0.0 ou une IP non routable : réutiliser l’hôte de contrôle.
+    if (host.startsWith('0.') || host === '127.0.0.1') {
+      host = this.host;
+    }
     return {
       host,
       port,
@@ -165,12 +253,10 @@ export class FtpClient {
     const tcp = loadTcp();
     return new Promise((resolve, reject) => {
       const chunks: string[] = [];
-      const socket = tcp.createConnection({ host, port }, () => undefined);
+      const socket = tcp.createConnection(socketOptions(host, port), () => undefined);
       socket.setEncoding?.('utf8');
       socket.on('data', (chunk) => chunks.push(String(chunk)));
-      socket.on('error', (error) =>
-        reject(error instanceof Error ? error : new FtpError(String(error)))
-      );
+      socket.on('error', (error) => reject(humanizeSocketError(error, host, port)));
       socket.on('close', () => resolve(chunks.join('')));
     });
   }
@@ -178,15 +264,13 @@ export class FtpClient {
   private writeData(host: string, port: number, bytes: Uint8Array): Promise<void> {
     const tcp = loadTcp();
     return new Promise((resolve, reject) => {
-      const socket = tcp.createConnection({ host, port }, () => {
+      const socket = tcp.createConnection(socketOptions(host, port), () => {
         socket.write(bytes, undefined, () => {
           socket.destroy();
           resolve();
         });
       });
-      socket.on('error', (error) =>
-        reject(error instanceof Error ? error : new FtpError(String(error)))
-      );
+      socket.on('error', (error) => reject(humanizeSocketError(error, host, port)));
     });
   }
 

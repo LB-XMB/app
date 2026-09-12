@@ -2,7 +2,9 @@
 
 LB’XMB n’est **pas encore** dans le catalogue officiel F-Droid.
 En attendant la revue, l’APK se met à jour via
-[Obtainium](../README.md#installation) (source Forgejo).
+[Obtainium](../README.md#installation) (source Forgejo — dépôt
+`https://git.lbxmb.fr/lbxmb/app`, page des releases
+`https://git.lbxmb.fr/lbxmb/app/releases`).
 
 Ce fichier décrit ce qu’il faudra fournir pour une soumission
 [`fdroiddata`](https://gitlab.com/fdroid/fdroiddata) :

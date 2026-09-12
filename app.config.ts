@@ -96,6 +96,7 @@ const config: ExpoConfig = {
         enableLiveTextInteraction: false,
       },
     ],
+    'expo-video',
   ],
   experiments: {
     typedRoutes: true,

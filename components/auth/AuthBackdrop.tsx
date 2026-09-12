@@ -1,74 +1,52 @@
 import { StyleSheet, useWindowDimensions } from 'react-native';
-import Svg, { Defs, Line, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, Ellipse, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 /**
- * Background of the sign-in page, ported from the website.
- *
- * Mirrors the layer stack of `web/src/app/login/page.tsx`: a near-black base,
- * a blue halo in the top right, a green one in the bottom left and a faint
- * grid. The CSS relies on `blur-[120px]`, which React Native cannot apply to a
- * view, so each halo is drawn as a radial gradient instead.
+ * Fond de la page de connexion — même atmosphère que Gradient Waves du site
+ * (`#38bdf8` / `ambientLightRaysBackgroundStyle`), sans WebGL.
  */
 
-const BASE = '#030303';
-/** Tailwind `blue-600` and `emerald-600`, as used by the page. */
-const BLUE = '#2563EB';
-const EMERALD = '#059669';
-/** Tile size of `web/public/grid.svg`. */
-const GRID_SIZE = 100;
+const BASE = '#020202';
+/** Couleur page d’accueil du site (`PageLightRaysBackdrop raysColor`). */
+const WAVE = '#38bdf8';
 
 export function AuthBackdrop() {
   const { width, height } = useWindowDimensions();
 
-  // The halos are 600 and 500 pixels wide on the website, offset by 10% of the
-  // viewport. The blur spreads them further, hence the larger radius here.
-  const blue = {
-    cx: width * 1.1 - 300,
-    cy: height * -0.1 + 300,
-    r: 420,
-  };
-  const emerald = {
-    cx: width * -0.1 + 250,
-    cy: height * 1.1 - 250,
-    r: 370,
-  };
+  // Ellipses alignées sur le CSS ambiant du site :
+  // top 50%/-16%, sideR 86%/14%, sideL 14%/24%.
+  const top = { cx: width * 0.5, cy: height * -0.08, rx: width * 0.72, ry: height * 0.42 };
+  const sideR = { cx: width * 0.9, cy: height * 0.16, rx: width * 0.38, ry: height * 0.28 };
+  const sideL = { cx: width * 0.08, cy: height * 0.28, rx: width * 0.34, ry: height * 0.26 };
+  const crest = { cx: width * 0.48, cy: height * 0.12, rx: width * 0.28, ry: height * 0.12 };
 
   return (
     <Svg style={StyleSheet.absoluteFill} width={width} height={height}>
       <Defs>
-        <RadialGradient id="blueHalo" cx={blue.cx} cy={blue.cy} r={blue.r} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={BLUE} stopOpacity={0.22} />
-          <Stop offset="0.55" stopColor={BLUE} stopOpacity={0.08} />
-          <Stop offset="1" stopColor={BLUE} stopOpacity={0} />
+        <RadialGradient id="waveTop" cx="50%" cy="50%" rx="50%" ry="50%">
+          <Stop offset="0" stopColor={WAVE} stopOpacity={0.38} />
+          <Stop offset="0.55" stopColor={WAVE} stopOpacity={0.12} />
+          <Stop offset="1" stopColor={WAVE} stopOpacity={0} />
         </RadialGradient>
-
-        <RadialGradient
-          id="emeraldHalo"
-          cx={emerald.cx}
-          cy={emerald.cy}
-          r={emerald.r}
-          gradientUnits="userSpaceOnUse"
-        >
-          <Stop offset="0" stopColor={EMERALD} stopOpacity={0.14} />
-          <Stop offset="0.55" stopColor={EMERALD} stopOpacity={0.05} />
-          <Stop offset="1" stopColor={EMERALD} stopOpacity={0} />
+        <RadialGradient id="waveRight" cx="50%" cy="50%" rx="50%" ry="50%">
+          <Stop offset="0" stopColor={WAVE} stopOpacity={0.2} />
+          <Stop offset="1" stopColor={WAVE} stopOpacity={0} />
         </RadialGradient>
-
-        <Pattern
-          id="grid"
-          width={GRID_SIZE}
-          height={GRID_SIZE}
-          patternUnits="userSpaceOnUse"
-        >
-          <Line x1="0" y1="0" x2="0" y2={GRID_SIZE} stroke="#FFFFFF" strokeWidth="1" />
-          <Line x1="0" y1="0" x2={GRID_SIZE} y2="0" stroke="#FFFFFF" strokeWidth="1" />
-        </Pattern>
+        <RadialGradient id="waveLeft" cx="50%" cy="50%" rx="50%" ry="50%">
+          <Stop offset="0" stopColor={WAVE} stopOpacity={0.16} />
+          <Stop offset="1" stopColor={WAVE} stopOpacity={0} />
+        </RadialGradient>
+        <RadialGradient id="waveCrest" cx="50%" cy="50%" rx="50%" ry="50%">
+          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.14} />
+          <Stop offset="1" stopColor={WAVE} stopOpacity={0} />
+        </RadialGradient>
       </Defs>
 
       <Rect width={width} height={height} fill={BASE} />
-      <Rect width={width} height={height} fill="url(#grid)" opacity={0.05} />
-      <Rect width={width} height={height} fill="url(#blueHalo)" />
-      <Rect width={width} height={height} fill="url(#emeraldHalo)" />
+      <Ellipse cx={top.cx} cy={top.cy} rx={top.rx} ry={top.ry} fill="url(#waveTop)" />
+      <Ellipse cx={sideR.cx} cy={sideR.cy} rx={sideR.rx} ry={sideR.ry} fill="url(#waveRight)" />
+      <Ellipse cx={sideL.cx} cy={sideL.cy} rx={sideL.rx} ry={sideL.ry} fill="url(#waveLeft)" />
+      <Ellipse cx={crest.cx} cy={crest.cy} rx={crest.rx} ry={crest.ry} fill="url(#waveCrest)" />
     </Svg>
   );
 }

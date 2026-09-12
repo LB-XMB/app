@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
-import * as WebBrowser from 'expo-web-browser';
-import { Play, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -13,10 +12,11 @@ import Reanimated, {
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AnimatedPressable, Button, Typography } from '@/ui/components';
-import { duration, radius, spacing, useColors } from '@/ui/theme';
+import { AnimatedPressable, Typography } from '@/ui/components';
+import { duration, radius, spacing } from '@/ui/theme';
 
 import type { MediaItem } from './mediaItems';
+import { ResourceVideoPlayer } from './ResourceVideoPlayer';
 
 const MAX_SCALE = 4;
 /** Pinching below this is treated as "back to fit", so the pager takes over. */
@@ -77,7 +77,7 @@ function Viewer({ items, initialIndex, onClose }: ViewerProps) {
           setCurrent(Math.round(event.nativeEvent.contentOffset.x / width));
         }}
       >
-        {items.map((item) => (
+        {items.map((item, pageIndex) => (
           <View key={item.key} style={{ width, height }}>
             {item.kind === 'image' ? (
               <ZoomableImage
@@ -86,7 +86,12 @@ function Viewer({ items, initialIndex, onClose }: ViewerProps) {
                 onZoomChange={(zoomed) => setPagingEnabled(!zoomed)}
               />
             ) : (
-              <VideoPage item={item} />
+              // Ne monte le lecteur que sur la page active (évite plusieurs Plyr / décodages).
+              pageIndex === current ? (
+                <ResourceVideoPlayer item={item} />
+              ) : (
+                <View style={styles.videoPage} />
+              )
             )}
           </View>
         ))}
@@ -214,47 +219,6 @@ function ZoomableImage({ uri, onClose, onZoomChange }: ZoomableImageProps) {
   );
 }
 
-interface VideoPageProps {
-  item: Extract<MediaItem, { kind: 'video' | 'youtube' }>;
-}
-
-/**
- * Videos play in the system browser: YouTube cannot be embedded without a
- * WebView, and hosted files stream fine from there.
- */
-function VideoPage({ item }: VideoPageProps) {
-  const colors = useColors();
-  const target = item.kind === 'youtube' ? item.watchUrl : item.uri;
-
-  return (
-    <View style={styles.videoPage}>
-      {item.kind === 'youtube' ? (
-        <Image
-          source={{ uri: item.posterUri }}
-          style={StyleSheet.absoluteFill}
-          contentFit="contain"
-          transition={160}
-          cachePolicy="memory-disk"
-        />
-      ) : null}
-
-      <View style={styles.videoOverlay}>
-        <View style={[styles.videoIcon, { backgroundColor: colors.primary }]}>
-          <Play size={28} color={colors.onPrimary} fill={colors.onPrimary} />
-        </View>
-        <Typography variant="h3" color="#FFFFFF" align="center">
-          {item.kind === 'youtube' ? 'Vidéo YouTube' : 'Vidéo'}
-        </Typography>
-        <Button
-          label="Lire la vidéo"
-          fullWidth={false}
-          onPress={() => void WebBrowser.openBrowserAsync(target)}
-        />
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -270,6 +234,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
+    zIndex: 2,
   },
   counter: {
     paddingHorizontal: spacing.md,
@@ -287,19 +252,6 @@ const styles = StyleSheet.create({
   },
   videoPage: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  videoOverlay: {
-    alignItems: 'center',
-    gap: spacing.lg,
-    paddingHorizontal: spacing['3xl'],
-  },
-  videoIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#000',
   },
 });

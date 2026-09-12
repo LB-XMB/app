@@ -109,7 +109,7 @@ export default function FtpScreen() {
     const next = new FtpClient({
       host: target.host.trim(),
       port: target.port || 21,
-      user: target.user.trim() || 'anonymous',
+      user: target.user.trim(),
       password: target.password,
     });
 
@@ -315,8 +315,9 @@ export default function FtpScreen() {
           />
 
           <Typography variant="caption" color="tertiary">
-            La console et le téléphone doivent être sur le même Wi-Fi. Sur PS3, Multiman ou
-            webMAN expose généralement le port 21.
+            La console et le téléphone doivent être sur le même Wi-Fi (pas de VPN / données
+            mobiles). Démarre le serveur FTP sur la console (Multiman, webMAN, GoldHEN…)
+            avant de te connecter — le port 21 est le plus courant.
           </Typography>
         </View>
       ) : (

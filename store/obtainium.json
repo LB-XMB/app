@@ -4,5 +4,5 @@
   "author": "LB'XMB",
   "name": "LB'XMB",
   "preferredApkIndex": 0,
-  "additionalSettings": "{\"overrideSource\":\"Forgejo (Codeberg)\",\"includePrereleases\":false,\"apkFilterRegEx\":\"android\\\\.apk$\",\"invertAPKFilter\":false,\"autoApkFilterByArch\":true,\"about\":\"Catalogue communautaire de modding console.\"}"
+  "additionalSettings": "{\"overrideSource\":\"Forgejo (Codeberg)\",\"includePrereleases\":false,\"apkFilterRegEx\":\"android\\\\.apk$\",\"invertAPKFilter\":false,\"autoApkFilterByArch\":true,\"about\":\"Catalogue communautaire de modding console. Releases : https://git.lbxmb.fr/lbxmb/app/releases\"}"
 }
