@@ -148,7 +148,10 @@ jobs:
             -H "Authorization: token $TOKEN" \
             -H "Content-Type: application/json" \
             -d "$BODY" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
-              try { const j = JSON.parse(d); if (j.id) return console.log(j.id); } catch {}
+              try {
+                const j = JSON.parse(d);
+                if (typeof j.id === "number") return console.log(j.id);
+              } catch {}
               console.log("");
             })')"
 
@@ -156,11 +159,19 @@ jobs:
             echo "Release already exists, reusing it."
             ID="$(curl -sS "$API/tags/$TAG" -H "Authorization: token $TOKEN" \
               | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
-                  console.log(JSON.parse(d).id);
+                  try {
+                    const j = JSON.parse(d);
+                    if (typeof j.id === "number") return console.log(j.id);
+                  } catch {}
+                  console.log("");
                 })')"
           fi
 
-          test -n "$ID"
+          if ! [[ "$ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::Impossible de créer ou récupérer la release $TAG (réponse API invalide)."
+            exit 1
+          fi
+
           echo "id=$ID" >> "$GITHUB_OUTPUT"
           echo "Release id: $ID"
 
