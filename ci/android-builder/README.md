@@ -11,20 +11,14 @@ cd /chemin/vers/app
 ./ci/android-builder/build.sh
 ```
 
-Tag produit : `lbxmb-android-builder:sdk36-ndk27`, aussi poussé vers
-`localhost:5001/lbxmb/android-builder:sdk36-ndk27` (référencé par
-`.forgejo/workflows/release.yml`).
+Tag produit / attendu par `.forgejo/workflows/release.yml` :
+`lbxmb-android-builder:sdk36-ndk27`.
 
-L’image reste **locale** sur l’hôte du runner (`docker images`). Le nom
-`lbxmb-android-builder:sdk36-ndk27` ne doit **pas** être tiré de Docker Hub
-(`force_pull: false` côté runner, souvent déjà le cas).
+Image **strictement locale** : pas de registry. Avec `force_pull: false` sur le
+runner, Docker démarre l’image déjà présente sans `docker pull`.
 
-Optionnel : pousser aussi sur le registry local :
-```bash
-docker tag lbxmb-android-builder:sdk36-ndk27 localhost:5001/lbxmb/android-builder:sdk36-ndk27
-docker push localhost:5001/lbxmb/android-builder:sdk36-ndk27
-```
-puis pointer le workflow sur `localhost:5001/lbxmb/android-builder:sdk36-ndk27`.
+Ne pas référencer `localhost:5001/...` dans le workflow : Docker tente d’abord
+HTTPS vers le registry et échoue (`connection refused`).
 
 Rebuild uniquement quand les pins SDK/NDK du `Dockerfile` changent.
 
