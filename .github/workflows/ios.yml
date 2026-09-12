@@ -119,10 +119,16 @@ jobs:
           TAG: v${{ steps.meta.outputs.version }}
         run: |
           set -eu
-          if ! gh release view "$TAG" > /dev/null 2>&1; then
+          NOTES="IPA non signée, à installer avec AltStore, SideStore, TrollStore ou Sideloadly."
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # A prior cancelled run may have left a draft; undraft so Forgejo
+            # can fetch /releases/download/... without auth.
+            gh release edit "$TAG" --draft=false --title "$TAG" --notes "$NOTES"
+          else
             gh release create "$TAG" \
               --title "$TAG" \
-              --notes "IPA non signée, à installer avec AltStore, SideStore, TrollStore ou Sideloadly."
+              --notes "$NOTES"
           fi
           gh release upload "$TAG" "$NAME" "$NAME.sha256" --clobber
+          gh release edit "$TAG" --draft=false
           echo "Published $NAME on the $TAG release."
