@@ -71,17 +71,47 @@ jobs:
         run: |
           set -eu
           TAG="${{ steps.meta.outputs.tag }}"
-          PREVIOUS="$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)"
+          TAG_COMMIT="$(git rev-list -n 1 "$TAG")"
 
-          if [ -n "$PREVIOUS" ]; then
-            echo "## Changements depuis $PREVIOUS" > notes.md
-            echo >> notes.md
-            git log --no-merges --pretty='- %s' "$PREVIOUS..$TAG" >> notes.md
-          else
-            echo "## Première version" > notes.md
-          fi
+          # Previous *distinct* version tag by semver. Skip tags that point at the
+          # same commit (retags / cancelled builds), otherwise git describe-style
+          # ranges jump over them and dump every CI commit since an older release.
+          PREVIOUS=""
+          while IFS= read -r candidate; do
+            [ -z "$candidate" ] && continue
+            if [ "$(git rev-list -n 1 "$candidate")" != "$TAG_COMMIT" ]; then
+              PREVIOUS="$candidate"
+              break
+            fi
+          done <<EOF
+          $(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -vxF "$TAG" || true)
+          EOF
 
-          cat >> notes.md <<'NOTES'
+          {
+            if [ -n "$PREVIOUS" ]; then
+              echo "## Changements depuis $PREVIOUS"
+              echo
+              # Drop CI / store plumbing from the public changelog.
+              COMMITS="$(
+                git log --no-merges --pretty='%s' "$PREVIOUS..$TAG" 2>/dev/null \
+                  | grep -Ev \
+                    -e 'Android CI' \
+                    -e 'Obtainium' \
+                    -e 'registry' \
+                    -e 'Docker Hub' \
+                    -e 'sdkmanager|pre-cuite|arm64 seul' \
+                  || true
+              )"
+              if [ -n "$COMMITS" ]; then
+                printf '%s\n' "$COMMITS" | sed 's/^/- /'
+              else
+                echo "_Aucun changement applicatif depuis $PREVIOUS._"
+              fi
+            else
+              echo "## Première version"
+            fi
+
+            cat <<'NOTES'
 
           ### Installation
 
@@ -89,6 +119,8 @@ jobs:
           - **iOS** : le `.ipa` n'est pas signé, il s'installe avec AltStore, SideStore,
             TrollStore ou Sideloadly.
           NOTES
+          } > notes.md
+
           cat notes.md
 
       - name: Create or reuse the Forgejo release
