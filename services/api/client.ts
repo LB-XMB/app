@@ -125,11 +125,13 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 }
 
-/** Reads the `error` field of a failed response, ignoring anything unexpected. */
+/** Reads the `error` / `message` field of a failed response. */
 async function readServerError(response: Response): Promise<string | undefined> {
   try {
-    const payload = (await response.json()) as { error?: unknown };
-    return typeof payload.error === 'string' && payload.error ? payload.error : undefined;
+    const payload = (await response.json()) as { error?: unknown; message?: unknown };
+    if (typeof payload.error === 'string' && payload.error) return payload.error;
+    if (typeof payload.message === 'string' && payload.message) return payload.message;
+    return undefined;
   } catch {
     return undefined;
   }

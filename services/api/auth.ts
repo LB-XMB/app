@@ -1,3 +1,4 @@
+import { AppState, type AppStateStatus, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 
 import type { SessionUser } from '@/stores/session';
@@ -18,7 +19,7 @@ import { API_BASE_URL } from './config';
  */
 
 const POLL_INTERVAL_MS = 1500;
-/** After the browser closes, keep polling briefly in case approve just landed. */
+/** After the user returns to the app, keep polling in case approve just landed. */
 const LATE_APPROVAL_CHECKS = 12;
 
 export type AuthFailureReason = 'cancelled' | 'expired';
@@ -91,21 +92,24 @@ export async function signInWithBrowser(method: AuthMethod): Promise<AuthSuccess
     body: {},
   });
 
-  // openBrowserAsync (not openAuthSessionAsync): this flow never redirects back to
-  // an app scheme — the app polls /qr/status. AuthSession often dismisses early
-  // on Discord/OAuth navigations and races the approve step.
-  const browser = WebBrowser.openBrowserAsync(approvalUrl(challenge.token, method), {
-    presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-    enableDefaultShareMenuItem: false,
-    showInRecents: true,
-  });
+  const url = approvalUrl(challenge.token, method);
   const deadline = Date.now() + challenge.expiresIn * 1000;
+
+  // Android: openBrowserAsync resolves as soon as Chrome Custom Tabs opens —
+  // it does NOT wait for close. Race on that promise and we "cancel" while the
+  // user is still logging in. Wait for AppState to return to foreground instead.
+  const browserReturned = waitForReturnFromBrowser();
+  await WebBrowser.openBrowserAsync(url, {
+    ...(Platform.OS === 'ios'
+      ? { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN }
+      : { showInRecents: true }),
+  });
 
   let exchangeToken: string;
   try {
     exchangeToken = await Promise.race([
       pollUntilApproved(challenge.token, deadline),
-      browser.then(() => waitForLateApproval(challenge.token)),
+      browserReturned.then(() => waitForLateApproval(challenge.token)),
     ]);
   } finally {
     await WebBrowser.dismissBrowser().catch(() => undefined);
@@ -121,6 +125,35 @@ export async function signInWithBrowser(method: AuthMethod): Promise<AuthSuccess
   }
 
   return { token: claimed.sessionToken, user: await fetchSessionUser(claimed.sessionToken) };
+}
+
+/**
+ * Resolves when the app becomes active again after having left for the browser.
+ * On iOS, openBrowserAsync already waits for dismiss — this still works as a
+ * secondary signal once the modal is gone.
+ */
+function waitForReturnFromBrowser(): Promise<void> {
+  return new Promise((resolve) => {
+    let sawBackground = AppState.currentState !== 'active';
+
+    const onChange = (state: AppStateStatus) => {
+      if (state === 'background' || state === 'inactive') {
+        sawBackground = true;
+        return;
+      }
+      if (state === 'active' && sawBackground) {
+        subscription.remove();
+        resolve();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', onChange);
+
+    // Already backgrounded (slow open) — still wait for the next active.
+    if (AppState.currentState !== 'active') {
+      sawBackground = true;
+    }
+  });
 }
 
 /** Reads the profile of the freshly signed in user. */

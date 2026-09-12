@@ -75,12 +75,20 @@ export function SignInView({ mode }: SignInViewProps) {
       signIn(await signInWithBrowser(method));
       if (mode === 'standalone') router.back();
     } catch (cause) {
+      const authError = cause instanceof AuthError ? cause : null;
       // Giving up is a normal outcome, it does not deserve an error message.
-      if (cause instanceof AuthError && cause.reason === 'cancelled') return;
+      if (authError?.reason === 'cancelled') {
+        setError('Connexion annulée — rouvre et attends « C’est autorisé » avant de fermer.');
+        return;
+      }
       setError(
-        cause instanceof AuthError || cause instanceof ApiError
-          ? cause.userMessage
-          : 'La connexion a échoué. Réessaie.'
+        authError
+          ? authError.userMessage
+          : cause instanceof ApiError
+            ? cause.userMessage
+            : cause instanceof Error && cause.message
+              ? cause.message
+              : 'La connexion a échoué. Réessaie.'
       );
     } finally {
       setPending(null);
