@@ -18,8 +18,8 @@ import { API_BASE_URL } from './config';
  */
 
 const POLL_INTERVAL_MS = 1500;
-/** Grace period after the browser closes, in case approval just went through. */
-const LATE_APPROVAL_CHECKS = 2;
+/** After the browser closes, keep polling briefly in case approve just landed. */
+const LATE_APPROVAL_CHECKS = 12;
 
 export type AuthFailureReason = 'cancelled' | 'expired';
 
@@ -91,7 +91,14 @@ export async function signInWithBrowser(method: AuthMethod): Promise<AuthSuccess
     body: {},
   });
 
-  const browser = WebBrowser.openAuthSessionAsync(approvalUrl(challenge.token, method));
+  // openBrowserAsync (not openAuthSessionAsync): this flow never redirects back to
+  // an app scheme — the app polls /qr/status. AuthSession often dismisses early
+  // on Discord/OAuth navigations and races the approve step.
+  const browser = WebBrowser.openBrowserAsync(approvalUrl(challenge.token, method), {
+    presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+    enableDefaultShareMenuItem: false,
+    showInRecents: true,
+  });
   const deadline = Date.now() + challenge.expiresIn * 1000;
 
   let exchangeToken: string;
@@ -101,13 +108,17 @@ export async function signInWithBrowser(method: AuthMethod): Promise<AuthSuccess
       browser.then(() => waitForLateApproval(challenge.token)),
     ]);
   } finally {
-    WebBrowser.dismissAuthSession();
+    await WebBrowser.dismissBrowser().catch(() => undefined);
   }
 
   const claimed = await request<ClaimResponse>('/api/auth/qr/claim', {
     method: 'POST',
     body: { token: challenge.token, exchangeToken },
   });
+
+  if (!claimed?.sessionToken) {
+    throw new AuthError('expired', 'The claim response had no session token.');
+  }
 
   return { token: claimed.sessionToken, user: await fetchSessionUser(claimed.sessionToken) };
 }
