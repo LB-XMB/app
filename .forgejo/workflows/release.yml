@@ -135,12 +135,12 @@ jobs:
     needs: release
     runs-on: docker
     # JDK + SDK + NDK baked image (ci/android-builder/).
-    # Hosted on the LBXMB registry so every runner can pull it.
+    # Docker Hub so every Forgejo runner can pull it.
     # Rebuild+push: ./ci/android-builder/build.sh
     # Do NOT mount volumes via container.options unless the runner
     # config lists them under container.valid_volumes (empty = reject).
     container:
-      image: game.lbxmb.fr:8443/lbxmb/android-builder:sdk36-ndk27
+      image: interverti/android-builder:sdk36-ndk27
     env:
       APP_VERSION: ${{ needs.release.outputs.version }}
       ANDROID_HOME: /opt/android-sdk
