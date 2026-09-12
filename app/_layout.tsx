@@ -49,6 +49,10 @@ function RootNavigator() {
           <Stack.Screen name="guides/index" />
           <Stack.Screen name="guides/[id]" />
           <Stack.Screen name="favoris" />
+          <Stack.Screen name="listes/index" />
+          <Stack.Screen name="listes/[id]" />
+          <Stack.Screen name="notifications" />
+          <Stack.Screen name="profil/[id]" />
           <Stack.Screen name="historique" />
           <Stack.Screen name="parametres" />
           <Stack.Screen name="a-propos" />

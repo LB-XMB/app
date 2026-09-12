@@ -73,5 +73,22 @@ export {
   trackResourceDownload,
   type ResourceQuery,
 } from './endpoints';
+export {
+  fetchNotifications,
+  markNotificationsRead,
+  type AppNotification,
+  type NotificationsPayload,
+} from './notifications';
+export {
+  REPORT_REASONS,
+  submitReport,
+  type ReportType,
+} from './reports';
+export {
+  fetchPublicUser,
+  type PublicUser,
+  type PublicUserGuide,
+  type PublicUserResource,
+} from './users';
 export { siteUrl, uploadUrl } from './urls';
 export type * from './types';

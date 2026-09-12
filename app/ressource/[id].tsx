@@ -4,9 +4,11 @@ import {
   Code2,
   Download,
   ExternalLink,
+  Flag,
   Heart,
   History,
   Info,
+  ListPlus,
   Share2,
   Tag,
   Users,
@@ -17,9 +19,11 @@ import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HeaderAction, ScreenHeader } from '@/components/layout/ScreenHeader';
+import { AddToListSheet } from '@/components/resources/AddToListSheet';
 import { DownloadSheet } from '@/components/resources/DownloadSheet';
 import { MediaGallery } from '@/components/resources/MediaGallery';
 import { buildMediaItems } from '@/components/resources/mediaItems';
+import { ReportSheet } from '@/components/resources/ReportSheet';
 import { ResourceIcon } from '@/components/resources/ResourceIcon';
 import { useResource } from '@/hooks/useResources';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
@@ -46,6 +50,8 @@ export default function ResourceDetailScreen() {
 
   const { data: resource, isLoading, isError, error, refetch } = useResource(id);
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [listVisible, setListVisible] = useState(false);
+  const [reportVisible, setReportVisible] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   const isFavorite = useIsFavorite(resource?.id);
@@ -164,6 +170,12 @@ export default function ResourceDetailScreen() {
             </HeaderAction>
             <HeaderAction label="Partager" onPress={onShare}>
               <Share2 size={16} color={colors.text} strokeWidth={2.4} />
+            </HeaderAction>
+            <HeaderAction label="Ajouter à une liste" onPress={() => setListVisible(true)}>
+              <ListPlus size={16} color={colors.text} strokeWidth={2.4} />
+            </HeaderAction>
+            <HeaderAction label="Signaler" onPress={() => setReportVisible(true)}>
+              <Flag size={16} color={colors.text} strokeWidth={2.4} />
             </HeaderAction>
             <HeaderAction
               label="Ouvrir sur lbxmb.fr"
@@ -374,6 +386,19 @@ export default function ResourceDetailScreen() {
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
         resource={resource}
+      />
+      <AddToListSheet
+        visible={listVisible}
+        onClose={() => setListVisible(false)}
+        resourceId={resource.id}
+        resourceTitle={resource.title}
+      />
+      <ReportSheet
+        visible={reportVisible}
+        onClose={() => setReportVisible(false)}
+        type="resource"
+        targetId={resource.id}
+        label={resource.title}
       />
     </Screen>
   );

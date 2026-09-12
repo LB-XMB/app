@@ -51,6 +51,8 @@ export default function SettingsScreen() {
   const setHaptics = useSettingsStore((state) => state.setHapticsEnabled);
   const downloadNotifications = useSettingsStore((state) => state.downloadNotifications);
   const setDownloadNotifications = useSettingsStore((state) => state.setDownloadNotifications);
+  const forumInboxEnabled = useSettingsStore((state) => state.forumInboxEnabled);
+  const setForumInboxEnabled = useSettingsStore((state) => state.setForumInboxEnabled);
 
   const [cacheSize, setCacheSize] = useState(() => downloadedBytes());
 
@@ -84,6 +86,44 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.group}>
+          <ListSectionTitle>Notifications</ListSectionTitle>
+          <List>
+            <List.Item
+              title="Notifs téléchargements"
+              subtitle="Alerte locale quand un fichier est prêt"
+              leading={<IconBadge icon={Bell} color={colors.accent} size={30} />}
+              trailing={
+                <Switch
+                  value={downloadNotifications}
+                  onValueChange={(enabled) => {
+                    setDownloadNotifications(enabled);
+                    if (enabled) void ensureNotificationPermission();
+                  }}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                  thumbColor={colors.onPrimary}
+                />
+              }
+            />
+            <List.Item
+              title="Alertes forum (inbox)"
+              subtitle="Charge l’inbox API quand tu es connecté — pas de push distant"
+              leading={<IconBadge icon={Bell} color={colors.warning} size={30} />}
+              trailing={
+                <Switch
+                  value={forumInboxEnabled}
+                  onValueChange={(enabled) => {
+                    setForumInboxEnabled(enabled);
+                    if (enabled) void ensureNotificationPermission();
+                  }}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                  thumbColor={colors.onPrimary}
+                />
+              }
+            />
+          </List>
+        </View>
+
+        <View style={styles.group}>
           <ListSectionTitle>Apparence</ListSectionTitle>
           <View style={styles.chips}>
             {THEMES.map(({ value, label, icon: ThemeIcon }) => {
@@ -114,22 +154,6 @@ export default function SettingsScreen() {
                 <Switch
                   value={haptics}
                   onValueChange={setHaptics}
-                  trackColor={{ true: colors.primary, false: colors.border }}
-                  thumbColor={colors.onPrimary}
-                />
-              }
-            />
-            <List.Item
-              title="Notifs téléchargements"
-              subtitle="Alerte locale quand un fichier est prêt"
-              leading={<IconBadge icon={Bell} color={colors.accent} size={30} />}
-              trailing={
-                <Switch
-                  value={downloadNotifications}
-                  onValueChange={(enabled) => {
-                    setDownloadNotifications(enabled);
-                    if (enabled) void ensureNotificationPermission();
-                  }}
                   trackColor={{ true: colors.primary, false: colors.border }}
                   thumbColor={colors.onPrimary}
                 />

@@ -72,7 +72,14 @@ export default function SearchScreen() {
       router.push(`/guides/${hit.id}`);
       return;
     }
-    // Forum, shop and profiles have no native screen yet.
+    if (hit.type === 'forum_thread') {
+      router.push(`/forum/${hit.id}`);
+      return;
+    }
+    if (hit.type === 'profile') {
+      router.push(`/profil/${encodeURIComponent(hit.id)}`);
+      return;
+    }
     void WebBrowser.openBrowserAsync(`${API_BASE_URL}${hit.href}`);
   };
 

@@ -22,6 +22,8 @@ interface SettingsState {
   hapticsEnabled: boolean;
   /** Local notification when a queued download finishes. */
   downloadNotifications: boolean;
+  /** Poll forum inbox when signed in (opt-in). */
+  forumInboxEnabled: boolean;
   /** Last app version for which the changelog sheet was shown. */
   lastSeenAppVersion: string | null;
   setTheme: (theme: ThemePreference) => void;
@@ -29,6 +31,7 @@ interface SettingsState {
   setCatalogueLayout: (layout: CatalogueLayout) => void;
   setHapticsEnabled: (enabled: boolean) => void;
   setDownloadNotifications: (enabled: boolean) => void;
+  setForumInboxEnabled: (enabled: boolean) => void;
   setLastSeenAppVersion: (version: string) => void;
 }
 
@@ -42,12 +45,14 @@ export const useSettingsStore = create<SettingsState>()(
       catalogueLayout: 'grid',
       hapticsEnabled: true,
       downloadNotifications: false,
+      forumInboxEnabled: false,
       lastSeenAppVersion: null,
       setTheme: (theme) => set({ theme }),
       setConsent: (consent) => set({ consent, consentDate: new Date().toISOString() }),
       setCatalogueLayout: (catalogueLayout) => set({ catalogueLayout }),
       setHapticsEnabled: (hapticsEnabled) => set({ hapticsEnabled }),
       setDownloadNotifications: (downloadNotifications) => set({ downloadNotifications }),
+      setForumInboxEnabled: (forumInboxEnabled) => set({ forumInboxEnabled }),
       setLastSeenAppVersion: (lastSeenAppVersion) => set({ lastSeenAppVersion }),
     }),
     {

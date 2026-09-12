@@ -24,4 +24,6 @@ export const queryKeys = {
   forumThreadReactions: (id: string, viewerId: string) =>
     ['forum', 'thread', id, 'reactions', viewerId] as const,
   news: ['news', 'feed'] as const,
+  notifications: ['notifications', 'inbox'] as const,
+  publicUser: (id: string) => ['users', 'public', id] as const,
 };

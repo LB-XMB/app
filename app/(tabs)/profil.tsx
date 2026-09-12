@@ -4,9 +4,11 @@ import {
   BookOpen,
   ChevronRight,
   DownloadCloud,
+  FolderOpen,
   Globe,
   Heart,
   Info,
+  Bell,
   LogIn,
   LogOut,
   MessageSquare,
@@ -21,8 +23,10 @@ import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { WEB_URLS } from '@/services/api';
 import { signOut as revokeSession } from '@/services/api/auth';
 import { useFavoritesStore } from '@/stores/favorites';
+import { useCollectionsStore } from '@/stores/collections';
 import { useHistoryStore } from '@/stores/history';
 import { useIsSignedIn, useSessionStore } from '@/stores/session';
+import { useSettingsStore } from '@/stores/settings';
 import {
   AnimatedPressable,
   Button,
@@ -41,11 +45,13 @@ export default function ProfileScreen() {
   useScreenTracking('/profil');
 
   const favoritesCount = useFavoritesStore((state) => state.items.length);
+  const collectionsCount = useCollectionsStore((state) => state.collections.length);
   const downloadsCount = useHistoryStore((state) => state.downloads.length);
   const signedIn = useIsSignedIn();
   const user = useSessionStore((state) => state.user);
   const token = useSessionStore((state) => state.token);
   const clearSession = useSessionStore((state) => state.signOut);
+  const inboxEnabled = useSettingsStore((state) => state.forumInboxEnabled);
 
   const chevron = <ChevronRight size={17} color={colors.textTertiary} strokeWidth={2.2} />;
 
@@ -130,6 +136,17 @@ export default function ProfileScreen() {
               onPress={() => router.push('/favoris')}
             />
             <List.Item
+              title="Mes listes"
+              subtitle={
+                collectionsCount === 0
+                  ? 'Collections locales'
+                  : `${collectionsCount} liste${collectionsCount > 1 ? 's' : ''}`
+              }
+              leading={<IconBadge icon={FolderOpen} color={colors.accent} size={30} />}
+              trailing={chevron}
+              onPress={() => router.push('/listes')}
+            />
+            <List.Item
               title="Téléchargements"
               subtitle={
                 downloadsCount === 0
@@ -140,6 +157,17 @@ export default function ProfileScreen() {
               trailing={chevron}
               onPress={() => router.push('/historique')}
             />
+            {signedIn ? (
+              <List.Item
+                title="Notifications"
+                subtitle={
+                  inboxEnabled ? 'Inbox forum' : 'Active les alertes dans Paramètres'
+                }
+                leading={<IconBadge icon={Bell} color={colors.warning} size={30} />}
+                trailing={chevron}
+                onPress={() => router.push('/notifications')}
+              />
+            ) : null}
             <List.Item
               title="Guides"
               subtitle="Tous les tutoriels de modding"

@@ -37,6 +37,7 @@ const config: ExpoConfig = {
     bundleIdentifier: 'fr.lbxmb.app',
     buildNumber: String(BUILD),
     supportsTablet: true,
+    associatedDomains: ['applinks:lbxmb.fr', 'applinks:www.lbxmb.fr'],
     infoPlist: {
       CFBundleDisplayName: "LB'XMB",
       ITSAppUsesNonExemptEncryption: false,
@@ -63,6 +64,60 @@ const config: ExpoConfig = {
       'android.permission.WRITE_EXTERNAL_STORAGE',
       'android.permission.READ_MEDIA_IMAGES',
       'android.permission.READ_MEDIA_VIDEO',
+    ],
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [
+          {
+            scheme: 'https',
+            host: 'lbxmb.fr',
+            pathPrefix: '/ressources',
+          },
+          {
+            scheme: 'https',
+            host: 'lbxmb.fr',
+            pathPrefix: '/guides',
+          },
+          {
+            scheme: 'https',
+            host: 'lbxmb.fr',
+            pathPrefix: '/forum',
+          },
+          {
+            scheme: 'https',
+            host: 'lbxmb.fr',
+            pathPrefix: '/profil',
+          },
+          {
+            scheme: 'https',
+            host: 'www.lbxmb.fr',
+            pathPrefix: '/ressources',
+          },
+          {
+            scheme: 'https',
+            host: 'www.lbxmb.fr',
+            pathPrefix: '/guides',
+          },
+          {
+            scheme: 'https',
+            host: 'www.lbxmb.fr',
+            pathPrefix: '/forum',
+          },
+          {
+            scheme: 'https',
+            host: 'www.lbxmb.fr',
+            pathPrefix: '/profil',
+          },
+        ],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+      {
+        action: 'VIEW',
+        data: [{ scheme: 'lbxmb' }],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
     ],
   },
   web: {

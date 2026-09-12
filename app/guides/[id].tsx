@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { ChevronDown, FileText, Share2 } from 'lucide-react-native';
+import { ChevronDown, FileText, Flag, Share2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Share, ScrollView, StyleSheet, View } from 'react-native';
 import Reanimated, { FadeIn, LinearTransition } from 'react-native-reanimated';
@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RichText } from '@/components/guides/RichText';
 import { HeaderAction, ScreenHeader } from '@/components/layout/ScreenHeader';
+import { ReportSheet } from '@/components/resources/ReportSheet';
 import { useGuide } from '@/hooks/useGuides';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import type { GuideChapter } from '@/services/api';
@@ -28,6 +29,7 @@ export default function GuideDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   useScreenTracking('/guides/detail');
+  const [reportVisible, setReportVisible] = useState(false);
 
   const { data: guide, isLoading, isError, error, refetch } = useGuide(id);
 
@@ -62,19 +64,24 @@ export default function GuideDetailScreen() {
         title={guide.title}
         subtitle={guide.platform ?? undefined}
         actions={
-          <HeaderAction
-            label="Partager"
-            onPress={() => {
-              const url = WEB_URLS.guide(guide.id);
-              void Share.share({
-                title: guide.title,
-                message: `${guide.title}\n${url}`,
-                url,
-              });
-            }}
-          >
-            <Share2 size={16} color={colors.text} strokeWidth={2.4} />
-          </HeaderAction>
+          <>
+            <HeaderAction
+              label="Partager"
+              onPress={() => {
+                const url = WEB_URLS.guide(guide.id);
+                void Share.share({
+                  title: guide.title,
+                  message: `${guide.title}\n${url}`,
+                  url,
+                });
+              }}
+            >
+              <Share2 size={16} color={colors.text} strokeWidth={2.4} />
+            </HeaderAction>
+            <HeaderAction label="Signaler" onPress={() => setReportVisible(true)}>
+              <Flag size={16} color={colors.text} strokeWidth={2.4} />
+            </HeaderAction>
+          </>
         }
       />
 
@@ -111,6 +118,13 @@ export default function GuideDetailScreen() {
           <Chapters chapters={guide.chapters} />
         )}
       </ScrollView>
+      <ReportSheet
+        visible={reportVisible}
+        onClose={() => setReportVisible(false)}
+        type="guide"
+        targetId={guide.id}
+        label={guide.title}
+      />
     </Screen>
   );
 }

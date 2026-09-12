@@ -110,6 +110,18 @@ que le site). Cap / A2F du flux `site-login` ne sont **pas** réimplémentés ; 
 **Jeton** : `token` Better Auth (sign-in / sign-up) = même `session.token` que
 `sessionToken` après `claim` — utilisable en Bearer sur `/api/auth/me`.
 
+## Engagement app (hors OpenAPI public)
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| `POST` | `/api/reports` | Signalement (`reported_type`, `reported_id`, `reason`) — Bearer |
+| `GET` | `/api/users/{id}` | Profil public (pseudo / public_id / id) |
+| `GET` | `/api/notifications` | Inbox forum — Bearer |
+| `POST` | `/api/notifications` | Marquer lu (`notificationIds` / `markAllAsRead`) — Bearer |
+
+Les listes / collections restent **locales** (MMKV). Le push mobile distant n’est pas
+branché : voir [`push-backend.md`](./push-backend.md). Deep links : [`deep-links.md`](./deep-links.md).
+
 ## CORS
 
 L’API ne renvoie pas d’en-tête `Access-Control-Allow-Origin`. Ce n’est pas un problème sur
