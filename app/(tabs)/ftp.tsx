@@ -3,12 +3,13 @@ import {
   ChevronLeft,
   Folder,
   HardDrive,
+  Plus,
   RefreshCw,
   Upload,
   Wifi,
   WifiOff,
 } from 'lucide-react-native';
-import { useCallback, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useState, type ComponentProps } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -26,7 +27,14 @@ import {
   formatFtpSize,
   type FtpEntry,
 } from '@/services/ftp';
-import { useFtpStore } from '@/stores/ftp';
+import { enqueueFtpUpload, pumpFtpUploadQueue } from '@/services/ftpUploadQueue';
+import {
+  resolveFtpPassword,
+  saveFtpPassword,
+  useActiveFtpProfile,
+  useFtpStore,
+  type FtpProfile,
+} from '@/stores/ftp';
 import { useHistoryStore } from '@/stores/history';
 import {
   AnimatedPressable,
@@ -64,22 +72,63 @@ function listLocalDownloads(): LocalFile[] {
   }
 }
 
+function newProfile(): FtpProfile {
+  return {
+    id: `ftp-${Date.now()}`,
+    name: `Console ${useFtpStore.getState().profiles.length + 1}`,
+    host: '',
+    port: 21,
+    user: 'anonymous',
+    protocol: 'ftp',
+    lastPath: '/',
+  };
+}
+
 export default function FtpScreen() {
+  const active = useActiveFtpProfile();
+  useEffect(() => {
+    void pumpFtpUploadQueue();
+  }, []);
+
+  return <FtpScreenBody key={active?.id ?? 'none'} />;
+}
+
+function FtpScreenBody() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   useScreenTracking('/ftp');
 
-  const target = useFtpStore((state) => state.target);
-  const setTarget = useFtpStore((state) => state.setTarget);
+  const profiles = useFtpStore((state) => state.profiles);
+  const active = useActiveFtpProfile();
+  const patchActive = useFtpStore((state) => state.patchActive);
+  const setActiveProfileId = useFtpStore((state) => state.setActiveProfileId);
+  const upsertProfile = useFtpStore((state) => state.upsertProfile);
+  const setPasswordDraft = useFtpStore((state) => state.setPasswordDraft);
+  const uploadQueue = useFtpStore((state) => state.uploadQueue);
   const history = useHistoryStore((state) => state.downloads);
 
   const [client, setClient] = useState<FtpClient | null>(null);
-  const [path, setPath] = useState(target.lastPath || '/');
+  const [path, setPath] = useState(active?.lastPath || '/');
   const [entries, setEntries] = useState<FtpEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
 
   const connected = client !== null;
+  const profileId = active?.id;
+
+  useEffect(() => {
+    if (!profileId) return;
+    let cancelled = false;
+    void (async () => {
+      const draft = useFtpStore.getState().passwordDrafts[profileId];
+      const stored = draft ?? (await resolveFtpPassword(profileId));
+      if (!cancelled) setPassword(stored);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId]);
 
   const refresh = useCallback(
     async (nextClient: FtpClient, nextPath: string) => {
@@ -89,35 +138,38 @@ export default function FtpScreen() {
         const listed = await nextClient.list(nextPath);
         setEntries(listed);
         setPath(nextPath);
-        setTarget({ lastPath: nextPath });
+        patchActive({ lastPath: nextPath });
         setStatus(`${listed.length} élément${listed.length > 1 ? 's' : ''}`);
       } finally {
         setBusy(false);
       }
     },
-    [setTarget]
+    [patchActive]
   );
 
   const connect = async () => {
-    if (!target.host.trim()) {
+    if (!active?.host.trim()) {
       Alert.alert('IP manquante', 'Indique l’adresse IP de ta console sur le réseau local.');
       return;
     }
 
     setBusy(true);
     setStatus('Connexion…');
+    await saveFtpPassword(active.id, password);
+    setPasswordDraft(active.id, password);
+
     const next = new FtpClient({
-      host: target.host.trim(),
-      port: target.port || (target.protocol === 'sftp' ? 22 : 21),
-      user: target.user.trim(),
-      password: target.password,
-      protocol: target.protocol || 'ftp',
+      host: active.host.trim(),
+      port: active.port || (active.protocol === 'sftp' ? 22 : 21),
+      user: active.user.trim(),
+      password,
+      protocol: active.protocol || 'ftp',
     });
 
     try {
       await next.connect();
       setClient(next);
-      await refresh(next, target.lastPath || '/');
+      await refresh(next, active.lastPath || '/');
     } catch (error) {
       await next.disconnect().catch(() => undefined);
       setClient(null);
@@ -167,37 +219,25 @@ export default function FtpScreen() {
     }
   };
 
-  const uploadBytes = async (fileName: string, bytes: Uint8Array) => {
-    if (!client) return;
-    setBusy(true);
-    setStatus(`Envoi de ${fileName}…`);
-    try {
-      const remote = path.endsWith('/') ? `${path}${fileName}` : `${path}/${fileName}`;
-      await client.upload(remote, bytes);
-      await refresh(client, path);
-      Alert.alert('Envoi terminé', `${fileName} est sur la console.`);
-    } catch (error) {
-      Alert.alert(
-        'Envoi refusé',
-        error instanceof Error ? error.message : 'Le transfert a échoué.'
-      );
-      setStatus(null);
-    } finally {
-      setBusy(false);
-    }
+  const queueLocalFile = (fileName: string, uri: string) => {
+    if (!active) return;
+    const remote = path.endsWith('/') ? `${path}${fileName}` : `${path}/${fileName}`;
+    enqueueFtpUpload({
+      profileId: active.id,
+      fileName,
+      localUri: uri,
+      remotePath: remote,
+    });
+    setStatus(`Ajouté à la file : ${fileName}`);
   };
 
   const pickFromHistory = () => {
+    if (!active) return;
     const local = listLocalDownloads();
     const choices: { label: string; run: () => void }[] = [
       ...local.map((file) => ({
         label: file.name,
-        run: () => {
-          void (async () => {
-            const bytes = await new File(file.uri).bytes();
-            await uploadBytes(file.name, bytes);
-          })();
-        },
+        run: () => queueLocalFile(file.name, file.uri),
       })),
       ...history
         .filter((item) => !local.some((file) => file.name === item.fileName))
@@ -215,15 +255,14 @@ export default function FtpScreen() {
                 const downloaded = await File.downloadFileAsync(item.url, destination, {
                   idempotent: true,
                 });
-                const bytes = await new File(downloaded.uri).bytes();
-                await uploadBytes(item.fileName, bytes);
+                queueLocalFile(item.fileName, downloaded.uri);
               } catch (error) {
                 Alert.alert(
                   'Téléchargement impossible',
                   error instanceof Error ? error.message : 'Le fichier n’est plus disponible.'
                 );
+              } finally {
                 setBusy(false);
-                setStatus(null);
               }
             })();
           },
@@ -238,7 +277,7 @@ export default function FtpScreen() {
       return;
     }
 
-    Alert.alert('Choisir un fichier', 'Depuis les téléchargements de l’app :', [
+    Alert.alert('Choisir un fichier', 'Ajoute à la file d’envoi FTP :', [
       ...choices.slice(0, 5).map((choice) => ({
         text: choice.label,
         onPress: choice.run,
@@ -246,6 +285,27 @@ export default function FtpScreen() {
       { text: 'Annuler', style: 'cancel' as const },
     ]);
   };
+
+  const pendingUploads = uploadQueue.filter(
+    (job) => job.status === 'pending' || job.status === 'running' || job.status === 'error'
+  );
+
+  if (!active) {
+    return (
+      <Screen>
+        <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
+          <Typography variant="h1">FTP / SFTP</Typography>
+        </View>
+        <EmptyState
+          icon={HardDrive}
+          title="Aucun profil"
+          description="Crée un profil console pour commencer."
+          actionLabel="Nouveau profil"
+          onAction={() => upsertProfile(newProfile())}
+        />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -256,7 +316,7 @@ export default function FtpScreen() {
             <Typography variant="caption" color="secondary">
               {connected
                 ? status ?? path
-                : 'Envoie un PKG à ta console (FTP) ou vers un serveur SFTP'}
+                : 'Profils console + file d’envoi multi-fichiers'}
             </Typography>
           </View>
           {connected ? (
@@ -268,7 +328,16 @@ export default function FtpScreen() {
             >
               <WifiOff size={18} color={colors.danger} strokeWidth={2.3} />
             </AnimatedPressable>
-          ) : null}
+          ) : (
+            <AnimatedPressable
+              onPress={() => upsertProfile(newProfile())}
+              scale={0.92}
+              style={[styles.iconButton, { backgroundColor: colors.item, borderColor: colors.border }]}
+              accessibilityLabel="Nouveau profil"
+            >
+              <Plus size={18} color={colors.primary} strokeWidth={2.3} />
+            </AnimatedPressable>
+          )}
         </View>
       </View>
 
@@ -280,48 +349,69 @@ export default function FtpScreen() {
           ]}
         >
           <View style={styles.protocolRow}>
+            {profiles.map((profile) => (
+              <ProtocolChip
+                key={profile.id}
+                label={profile.name}
+                active={profile.id === active.id}
+                onPress={() => setActiveProfileId(profile.id)}
+              />
+            ))}
+          </View>
+
+          <Field
+            label="Nom du profil"
+            value={active.name}
+            onChangeText={(name) => patchActive({ name })}
+            placeholder="PS4 salon"
+          />
+
+          <View style={styles.protocolRow}>
             <ProtocolChip
               label="FTP"
-              active={target.protocol !== 'sftp'}
-              onPress={() => setTarget({ protocol: 'ftp' })}
+              active={active.protocol !== 'sftp'}
+              onPress={() => patchActive({ protocol: 'ftp' })}
             />
             <ProtocolChip
               label="SFTP"
-              active={target.protocol === 'sftp'}
-              onPress={() => setTarget({ protocol: 'sftp' })}
+              active={active.protocol === 'sftp'}
+              onPress={() => patchActive({ protocol: 'sftp' })}
             />
           </View>
 
           <Field
             label="Adresse IP"
-            value={target.host}
-            onChangeText={(host) => setTarget({ host })}
+            value={active.host}
+            onChangeText={(host) => patchActive({ host })}
             placeholder="192.168.1.42"
             autoCapitalize="none"
           />
           <Field
             label="Port"
-            value={String(target.port)}
+            value={String(active.port)}
             onChangeText={(value) =>
-              setTarget({
-                port: Number(value) || (target.protocol === 'sftp' ? 22 : 21),
+              patchActive({
+                port: Number(value) || (active.protocol === 'sftp' ? 22 : 21),
               })
             }
-            placeholder={target.protocol === 'sftp' ? '22' : '21'}
+            placeholder={active.protocol === 'sftp' ? '22' : '21'}
             keyboardType="number-pad"
           />
           <Field
             label="Utilisateur"
-            value={target.user}
-            onChangeText={(user) => setTarget({ user })}
+            value={active.user}
+            onChangeText={(user) => patchActive({ user })}
             placeholder="anonymous"
             autoCapitalize="none"
           />
           <Field
             label="Mot de passe"
-            value={target.password}
-            onChangeText={(password) => setTarget({ password })}
-            placeholder="••••••••"
+            value={password}
+            onChangeText={(value) => {
+              setPassword(value);
+              setPasswordDraft(active.id, value);
+            }}
+            placeholder="Stocké dans le coffre appareil"
             secureTextEntry
           />
 
@@ -334,10 +424,16 @@ export default function FtpScreen() {
             leading={<Wifi size={18} color={colors.onPrimary} strokeWidth={2.4} />}
           />
 
+          {pendingUploads.length > 0 ? (
+            <Typography variant="caption" color="secondary">
+              File d’envoi : {pendingUploads.length} fichier
+              {pendingUploads.length > 1 ? 's' : ''} en attente / en cours.
+            </Typography>
+          ) : null}
+
           <Typography variant="caption" color="tertiary">
-            {target.protocol === 'sftp'
-              ? 'SFTP s’appuie sur ssh2 — réservé aux serveurs SSH. Pour PS3/PS4 (Multiman, webMAN, GoldHEN), choisis FTP.'
-              : 'La console et le téléphone doivent être sur le même Wi-Fi (pas de VPN / données mobiles). Démarre le serveur FTP sur la console avant de te connecter — le port 21 est le plus courant.'}
+            Les mots de passe sont enregistrés dans le coffre sécurisé de l’appareil (pas en
+            clair dans MMKV). Pour PS3/PS4, utilise FTP (Multiman / webMAN / GoldHEN).
           </Typography>
         </View>
       ) : (
@@ -375,6 +471,16 @@ export default function FtpScreen() {
               <Upload size={16} color={colors.primary} strokeWidth={2.4} />
             </AnimatedPressable>
           </View>
+
+          {pendingUploads.length > 0 ? (
+            <Typography
+              variant="caption"
+              color="secondary"
+              style={{ paddingHorizontal: screenPadding, paddingBottom: spacing.sm }}
+            >
+              File : {pendingUploads.map((job) => job.fileName).join(', ')}
+            </Typography>
+          ) : null}
 
           {busy && entries.length === 0 ? (
             <ActivityIndicator color={colors.primary} style={styles.loader} />
@@ -509,11 +615,12 @@ const styles = StyleSheet.create({
   },
   protocolRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
   protocolChip: {
-    flex: 1,
-    height: 40,
+    minHeight: 40,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.lg,
     borderCurve: 'continuous',
     borderWidth: StyleSheet.hairlineWidth * 2,

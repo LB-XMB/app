@@ -47,11 +47,13 @@ interface DownloadArgs {
   file: DownloadFile;
   onProgress?: (progress: DownloadProgress) => void;
   signal?: AbortSignal;
+  /** Open the system share sheet after a sandbox save. Default true. */
+  shareAfter?: boolean;
 }
 
 /**
- * Downloads a resource file into the app sandbox, then hands it to the system
- * share sheet so the user can store it wherever they want.
+ * Downloads a resource file into the app sandbox, then optionally hands it to
+ * the system share sheet so the user can store it wherever they want.
  *
  * External links (GitHub releases, mirrors…) are opened in the browser instead:
  * they are not guaranteed to be direct file URLs.
@@ -61,6 +63,7 @@ export async function downloadResourceFile({
   file,
   onProgress,
   signal,
+  shareAfter = true,
 }: DownloadArgs): Promise<DownloadOutcome> {
   const url = downloadUrl(file);
   if (!url) return { status: 'error', message: 'Aucun lien de téléchargement.' };
@@ -104,7 +107,7 @@ export async function downloadResourceFile({
 
     recordHistory(downloaded.size ?? file.sizeBytes);
 
-    if (await Sharing.isAvailableAsync()) {
+    if (shareAfter && (await Sharing.isAvailableAsync())) {
       await Sharing.shareAsync(downloaded.uri, {
         dialogTitle: `Enregistrer ${file.fileName}`,
       });
@@ -115,8 +118,34 @@ export async function downloadResourceFile({
     if (signal?.aborted || (error as Error).name === 'AbortError') {
       return { status: 'cancelled' };
     }
-    return { status: 'error', message: (error as Error).message };
+    return { status: 'error', message: friendlyDownloadError(error) };
   }
+}
+
+function friendlyDownloadError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : '';
+  const lower = raw.toLowerCase();
+  if (lower.includes('timeout') || lower.includes('timed out')) {
+    return 'Le serveur met trop de temps à répondre.';
+  }
+  if (
+    lower.includes('network') ||
+    lower.includes('offline') ||
+    lower.includes('failed to connect') ||
+    lower.includes('internet')
+  ) {
+    return 'Impossible de joindre lbxmb.fr. Vérifie ta connexion.';
+  }
+  if (lower.includes('403') || lower.includes('forbidden')) {
+    return 'Accès refusé (réseau ou protection). Réessaie ou vérifie ta connexion.';
+  }
+  if (lower.includes('401') || lower.includes('unauthorized')) {
+    return 'Identifiants incorrects ou session expirée.';
+  }
+  if (/\b5\d\d\b/.test(lower) || lower.includes('server error')) {
+    return 'Le serveur est momentanément indisponible. Réessaie dans un instant.';
+  }
+  return raw.trim() || 'Échec du téléchargement.';
 }
 
 /** Removes every file previously downloaded by the app. */

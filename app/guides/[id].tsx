@@ -1,15 +1,16 @@
 import { useLocalSearchParams } from 'expo-router';
-import { ChevronDown, FileText } from 'lucide-react-native';
+import { ChevronDown, FileText, Share2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Share, ScrollView, StyleSheet, View } from 'react-native';
 import Reanimated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RichText } from '@/components/guides/RichText';
-import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { HeaderAction, ScreenHeader } from '@/components/layout/ScreenHeader';
 import { useGuide } from '@/hooks/useGuides';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import type { GuideChapter } from '@/services/api';
+import { WEB_URLS } from '@/services/api';
 import { layoutAnimation } from '@/ui/animation';
 import {
   AnimatedPressable,
@@ -24,6 +25,7 @@ import { platformColor, radius, screenPadding, spacing, useColors } from '@/ui/t
 
 export default function GuideDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const colors = useColors();
   const insets = useSafeAreaInsets();
   useScreenTracking('/guides/detail');
 
@@ -56,7 +58,25 @@ export default function GuideDetailScreen() {
 
   return (
     <Screen glowColor={tint}>
-      <ScreenHeader title={guide.title} subtitle={guide.platform ?? undefined} />
+      <ScreenHeader
+        title={guide.title}
+        subtitle={guide.platform ?? undefined}
+        actions={
+          <HeaderAction
+            label="Partager"
+            onPress={() => {
+              const url = WEB_URLS.guide(guide.id);
+              void Share.share({
+                title: guide.title,
+                message: `${guide.title}\n${url}`,
+                url,
+              });
+            }}
+          >
+            <Share2 size={16} color={colors.text} strokeWidth={2.4} />
+          </HeaderAction>
+        }
+      />
 
       <ScrollView
         contentContainerStyle={[

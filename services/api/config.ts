@@ -42,6 +42,7 @@ export const WEB_URLS = {
   apiDocs: `${API_BASE_URL}/api`,
   forum: `${API_BASE_URL}/forum`,
   resource: (id: string) => `${API_BASE_URL}/ressources/${encodeURIComponent(id)}`,
+  guide: (id: string) => `${API_BASE_URL}/guides/${encodeURIComponent(id)}`,
 } as const;
 
 export const REQUEST_TIMEOUT_MS = 15_000;

@@ -6,6 +6,7 @@ import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 
 import { AppProviders } from '@/components/providers/AppProviders';
+import { WhatsNewSheet } from '@/components/WhatsNewSheet';
 import { useSessionStore } from '@/stores/session';
 import { useSettingsStore } from '@/stores/settings';
 import { fontAssets, useTheme } from '@/ui/theme';
@@ -75,6 +76,7 @@ export default function RootLayout() {
   return (
     <AppProviders>
       <RootNavigator />
+      <WhatsNewSheet />
     </AppProviders>
   );
 }

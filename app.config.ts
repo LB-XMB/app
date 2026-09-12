@@ -54,7 +54,10 @@ const config: ExpoConfig = {
     },
     // Downloads land in the app sandbox and are handed to the share sheet, so
     // no storage or media permission is needed.
-    permissions: ['android.permission.INTERNET'],
+    permissions: [
+      'android.permission.INTERNET',
+      'android.permission.POST_NOTIFICATIONS',
+    ],
     blockedPermissions: [
       'android.permission.READ_EXTERNAL_STORAGE',
       'android.permission.WRITE_EXTERNAL_STORAGE',
@@ -76,6 +79,13 @@ const config: ExpoConfig = {
     'expo-font',
     'expo-web-browser',
     'expo-sharing',
+    'expo-secure-store',
+    [
+      'expo-notifications',
+      {
+        color: '#3B82F6',
+      },
+    ],
     [
       'expo-splash-screen',
       {

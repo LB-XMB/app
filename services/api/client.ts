@@ -48,6 +48,9 @@ export class ApiError extends Error {
           return 'Accès refusé (réseau ou protection). Réessaie ou vérifie ta connexion.';
         }
         if (this.status === 401) return 'Identifiants incorrects ou session expirée.';
+        if (this.status != null && this.status >= 500) {
+          return 'Le serveur est momentanément indisponible. Réessaie dans un instant.';
+        }
         return `Le serveur a répondu une erreur (${this.status}).`;
     }
   }

@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { Package } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { siteUrl, uploadUrl } from '@/services/api';
@@ -29,18 +29,14 @@ export function ResourceIcon({
   style,
 }: ResourceIconProps) {
   const colors = useColors();
-  const [failed, setFailed] = useState(false);
+  const [failedUri, setFailedUri] = useState<string | null>(null);
   const tint = platformColor(platform);
 
   const uri = useMemo(
     () => (siteAsset ? siteUrl(logo) : uploadUrl(logo, logoVersion)),
     [logo, logoVersion, siteAsset]
   );
-
-  // FlashList recycles cells: reset error state when the bound logo changes.
-  useEffect(() => {
-    setFailed(false);
-  }, [uri]);
+  const failed = Boolean(uri && failedUri === uri);
 
   return (
     <View
@@ -64,7 +60,7 @@ export function ResourceIcon({
           contentFit="cover"
           transition={0}
           cachePolicy="memory-disk"
-          onError={() => setFailed(true)}
+          onError={() => setFailedUri(uri)}
         />
       ) : (
         <Package size={Math.round(size * 0.4)} color={tint} strokeWidth={2} />

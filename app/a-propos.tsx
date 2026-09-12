@@ -1,14 +1,16 @@
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
-import { Code2, ExternalLink, Globe, Scale, ServerCog } from 'lucide-react-native';
+import { Code2, ExternalLink, Globe, Scale, ServerCog, Sparkles } from 'lucide-react-native';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
 
 import { Logo } from '@/components/brand/Logo';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { API_BASE_URL, WEB_URLS } from '@/services/api';
-import { IconBadge, List, ListSectionTitle, Screen, Typography } from '@/ui/components';
+import { changelogForVersion, currentAppVersion } from '@/services/appChangelog';
+import { IconBadge, List, ListSectionTitle, Screen, Sheet, Typography } from '@/ui/components';
 import { screenPadding, spacing, useColors } from '@/ui/theme';
 
 const REPO_URL = 'https://git.lbxmb.fr/lbxmb/app';
@@ -26,6 +28,8 @@ export default function AboutScreen() {
 
   const version = Constants.expoConfig?.version ?? '1.0.0';
   const external = <ExternalLink size={15} color={colors.textTertiary} strokeWidth={2.3} />;
+  const [notesOpen, setNotesOpen] = useState(false);
+  const notes = changelogForVersion(currentAppVersion());
 
   return (
     <Screen>
@@ -55,6 +59,14 @@ export default function AboutScreen() {
         <View style={styles.group}>
           <ListSectionTitle>Le projet</ListSectionTitle>
           <List>
+            {notes ? (
+              <List.Item
+                title="Nouveautés"
+                subtitle={`Version ${notes.version}`}
+                leading={<IconBadge icon={Sparkles} color={colors.primary} size={30} />}
+                onPress={() => setNotesOpen(true)}
+              />
+            ) : null}
             <List.Item
               title="Site web"
               subtitle={API_BASE_URL.replace('https://', '')}
@@ -93,6 +105,21 @@ export default function AboutScreen() {
           </Typography>
         </View>
       </ScrollView>
+
+      <Sheet visible={notesOpen} onClose={() => setNotesOpen(false)} title="Nouveautés">
+        {notes ? (
+          <View style={{ gap: spacing.md, paddingBottom: spacing.xl }}>
+            <Typography variant="caption" color="secondary">
+              Version {notes.version}
+            </Typography>
+            {notes.bullets.map((item) => (
+              <Typography key={item} variant="body">
+                • {item}
+              </Typography>
+            ))}
+          </View>
+        ) : null}
+      </Sheet>
     </Screen>
   );
 }

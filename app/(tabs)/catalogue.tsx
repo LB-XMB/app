@@ -1,7 +1,7 @@
 import { FlashList } from '@shopify/flash-list';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LayoutGrid, List as ListIcon, PackageSearch, SlidersHorizontal, X } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,6 +16,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useResourcesInfinite } from '@/hooks/useResources';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import type { Resource, SortOrder } from '@/services/api';
+import { useCataloguePrefsStore } from '@/stores/cataloguePrefs';
 import { useSettingsStore } from '@/stores/settings';
 import {
   AnimatedPressable,
@@ -44,14 +45,23 @@ export default function CatalogueScreen() {
 
   const layout = useSettingsStore((state) => state.catalogueLayout);
   const setLayout = useSettingsStore((state) => state.setCatalogueLayout);
+  const savedFilters = useCataloguePrefsStore((state) => state.filters);
+  const persistFilters = useCataloguePrefsStore((state) => state.setFilters);
 
   const [search, setSearch] = useState('');
   const [filtersVisible, setFiltersVisible] = useState(false);
-  const [filters, setFilters] = useState<CatalogueFilters>({
-    sort: params.sort === 'popular' ? 'popular' : 'recent',
-    platform: params.platform,
-    category: params.category,
-  });
+  const [filters, setFilters] = useState<CatalogueFilters>(() => ({
+    sort:
+      params.sort === 'popular' || params.sort === 'recent'
+        ? params.sort
+        : savedFilters.sort,
+    platform: params.platform || savedFilters.platform,
+    category: params.category || savedFilters.category,
+  }));
+
+  useEffect(() => {
+    persistFilters(filters);
+  }, [filters, persistFilters]);
 
   const debouncedSearch = useDebouncedValue(search, 400);
 

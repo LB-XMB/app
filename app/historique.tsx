@@ -1,12 +1,15 @@
 import { useRouter } from 'expo-router';
-import { DownloadCloud, Trash2 } from 'lucide-react-native';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { DownloadCloud, RotateCcw, Trash2 } from 'lucide-react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HeaderAction, ScreenHeader } from '@/components/layout/ScreenHeader';
 import { ResourceIcon } from '@/components/resources/ResourceIcon';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { formatBytes } from '@/services/download';
+import { pumpDownloadQueue, retryDownloadJob } from '@/services/downloadQueue';
+import { useDownloadQueueStore } from '@/stores/downloadQueue';
 import { useHistoryStore } from '@/stores/history';
 import {
   AnimatedPressable,
@@ -26,6 +29,16 @@ export default function HistoryScreen() {
   const downloads = useHistoryStore((state) => state.downloads);
   const removeDownload = useHistoryStore((state) => state.removeDownload);
   const clearDownloads = useHistoryStore((state) => state.clearDownloads);
+  const jobs = useDownloadQueueStore((state) => state.jobs);
+  const clearFinished = useDownloadQueueStore((state) => state.clearFinished);
+
+  useEffect(() => {
+    void pumpDownloadQueue();
+  }, []);
+
+  const activeJobs = jobs.filter(
+    (job) => job.status === 'pending' || job.status === 'running' || job.status === 'error'
+  );
 
   /** Downloads are grouped by day, newest first. */
   const groups = downloads.reduce<Map<string, typeof downloads>>((accumulator, entry) => {
@@ -61,7 +74,71 @@ export default function HistoryScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {downloads.length === 0 ? (
+        {activeJobs.length > 0 ? (
+          <View style={styles.group}>
+            <ListSectionTitle>File d’attente</ListSectionTitle>
+            <View style={styles.rows}>
+              {activeJobs.map((job) => (
+                <View
+                  key={job.id}
+                  style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}
+                >
+                  <ResourceIcon
+                    logo={job.resource.logo}
+                    platform={job.resource.platform}
+                    size={42}
+                  />
+                  <View style={styles.rowBody}>
+                    <Typography variant="title" numberOfLines={1}>
+                      {job.file.fileName}
+                    </Typography>
+                    <Typography variant="caption" color="secondary" numberOfLines={1}>
+                      {job.status === 'running'
+                        ? job.progress === null
+                          ? 'Téléchargement…'
+                          : `${Math.round(job.progress * 100)} %`
+                        : job.status === 'pending'
+                          ? 'En attente'
+                          : job.error ?? 'Erreur'}
+                    </Typography>
+                    {job.status === 'running' && job.progress !== null ? (
+                      <View style={[styles.progressTrack, { backgroundColor: colors.glass }]}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              backgroundColor: colors.primary,
+                              width: `${job.progress * 100}%`,
+                            },
+                          ]}
+                        />
+                      </View>
+                    ) : null}
+                  </View>
+                  {job.status === 'running' ? (
+                    <ActivityIndicator color={colors.primary} />
+                  ) : job.status === 'error' ? (
+                    <AnimatedPressable
+                      onPress={() => retryDownloadJob(job.id)}
+                      scale={0.88}
+                      style={styles.rowAction}
+                      accessibilityLabel="Réessayer"
+                    >
+                      <RotateCcw size={16} color={colors.primary} strokeWidth={2.3} />
+                    </AnimatedPressable>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+            <AnimatedPressable onPress={clearFinished} scale={0.98}>
+              <Typography variant="caption" color="tertiary">
+                Nettoyer les terminés de la file
+              </Typography>
+            </AnimatedPressable>
+          </View>
+        ) : null}
+
+        {downloads.length === 0 && activeJobs.length === 0 ? (
           <EmptyState
             icon={DownloadCloud}
             title="Aucun téléchargement"
@@ -183,5 +260,15 @@ const styles = StyleSheet.create({
   },
   rowAction: {
     padding: spacing.sm,
+  },
+  progressTrack: {
+    height: 3,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: radius.pill,
   },
 });

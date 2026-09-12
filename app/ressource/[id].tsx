@@ -7,11 +7,12 @@ import {
   Heart,
   History,
   Info,
+  Share2,
   Tag,
   Users,
 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Share, ScrollView, StyleSheet, View } from 'react-native';
 import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,7 +24,7 @@ import { ResourceIcon } from '@/components/resources/ResourceIcon';
 import { useResource } from '@/hooks/useResources';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { WEB_URLS } from '@/services/api';
-import { downloadResourceFile } from '@/services/download';
+import { enqueueDownload } from '@/services/downloadQueue';
 import { trackEvent } from '@/services/analytics';
 import { useFavoritesStore, useIsFavorite } from '@/stores/favorites';
 import {
@@ -74,15 +75,33 @@ export default function ResourceDetailScreen() {
         ? groups[0].files[0]
         : undefined;
 
-    // A single file needs no picker.
+    // A single file needs no picker — go straight to the queue.
     if (onlyFile) {
       setDownloading(true);
-      await downloadResourceFile({ resource, file: onlyFile });
+      await enqueueDownload(
+        {
+          id: resource.id,
+          title: resource.title,
+          platform: resource.platform,
+          logo: resource.logo,
+        },
+        onlyFile
+      );
       setDownloading(false);
       return;
     }
 
     setSheetVisible(true);
+  };
+
+  const onShare = () => {
+    if (!resource) return;
+    const url = WEB_URLS.resource(resource.id);
+    void Share.share({
+      title: resource.title,
+      message: `${resource.title}\n${url}`,
+      url,
+    });
   };
 
   if (isLoading) {
@@ -142,6 +161,9 @@ export default function ResourceDetailScreen() {
                 fill={isFavorite ? colors.danger : 'transparent'}
                 strokeWidth={2.4}
               />
+            </HeaderAction>
+            <HeaderAction label="Partager" onPress={onShare}>
+              <Share2 size={16} color={colors.text} strokeWidth={2.4} />
             </HeaderAction>
             <HeaderAction
               label="Ouvrir sur lbxmb.fr"

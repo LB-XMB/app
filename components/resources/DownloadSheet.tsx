@@ -1,25 +1,34 @@
-import { CheckCircle2, ChevronDown, Download, ExternalLink, FileDown } from 'lucide-react-native';
+import { CheckCircle2, ChevronDown, Download, ExternalLink, FileDown, HardDrive, RotateCcw } from 'lucide-react-native';
+import { Directory, File, Paths } from 'expo-file-system';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import Reanimated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 import type { DownloadFile, DownloadGroup, ResourceDetail } from '@/services/api';
-import { downloadResourceFile, formatBytes } from '@/services/download';
+import { formatBytes } from '@/services/download';
+import { enqueueDownload, retryDownloadJob } from '@/services/downloadQueue';
+import { enqueueFtpUpload } from '@/services/ftpUploadQueue';
+import { useActiveFtpProfile } from '@/stores/ftp';
+import { useDownloadQueueStore } from '@/stores/downloadQueue';
 import { AnimatedPressable, Sheet, Typography } from '@/ui/components';
 import { layoutAnimation } from '@/ui/animation';
 import { radius, screenPadding, spacing, useColors } from '@/ui/theme';
 
+const DOWNLOAD_DIRECTORY = 'telechargements';
+
+function sandboxUri(fileName: string): string | null {
+  try {
+    const file = new File(new Directory(Paths.document, DOWNLOAD_DIRECTORY), fileName);
+    return file.exists ? file.uri : null;
+  } catch {
+    return null;
+  }
+}
 export interface DownloadSheetProps {
   visible: boolean;
   onClose: () => void;
   resource: ResourceDetail;
 }
-
-type Status =
-  | { kind: 'idle' }
-  | { kind: 'running'; key: string; ratio: number | null }
-  | { kind: 'done'; key: string }
-  | { kind: 'error'; key: string; message: string };
 
 /** Lets the user pick a file when a resource ships several variants. */
 export function DownloadSheet({ visible, onClose, resource }: DownloadSheetProps) {
@@ -30,7 +39,6 @@ export function DownloadSheet({ visible, onClose, resource }: DownloadSheetProps
       title="Télécharger"
       subtitle={`${resource.fileCount} fichier${resource.fileCount > 1 ? 's' : ''} disponible${resource.fileCount > 1 ? 's' : ''}`}
     >
-      {/* Remounting on open resets the progress and expanded groups. */}
       {visible ? <DownloadList resource={resource} /> : null}
     </Sheet>
   );
@@ -38,31 +46,66 @@ export function DownloadSheet({ visible, onClose, resource }: DownloadSheetProps
 
 function DownloadList({ resource }: { resource: ResourceDetail }) {
   const colors = useColors();
-  const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const activeFtp = useActiveFtpProfile();
+  const jobs = useDownloadQueueStore((state) => state.jobs);
   const [expanded, setExpanded] = useState<Set<string>>(() =>
-    // A lone group is open from the start; several groups stay collapsed.
     resource.downloadGroups.length === 1
       ? new Set(resource.downloadGroups.map((group) => group.key))
       : new Set<string>()
   );
 
-  const start = async (file: DownloadFile) => {
-    setStatus({ kind: 'running', key: file.key, ratio: null });
-    const outcome = await downloadResourceFile({
-      resource,
-      file,
-      onProgress: ({ ratio }) => setStatus({ kind: 'running', key: file.key, ratio }),
-    });
+  const jobFor = (fileKey: string) =>
+    jobs.find(
+      (job) =>
+        job.resource.id === resource.id &&
+        job.file.key === fileKey &&
+        (job.status === 'pending' || job.status === 'running' || job.status === 'error')
+    ) ??
+    jobs.find(
+      (job) =>
+        job.resource.id === resource.id && job.file.key === fileKey && job.status === 'done'
+    );
 
-    if (outcome.status === 'error') {
-      setStatus({ kind: 'error', key: file.key, message: outcome.message });
+  const start = async (file: DownloadFile) => {
+    await enqueueDownload(
+      {
+        id: resource.id,
+        title: resource.title,
+        platform: resource.platform,
+        logo: resource.logo,
+      },
+      file
+    );
+  };
+
+  const sendViaFtp = (file: DownloadFile, localUri: string | null) => {
+    if (!activeFtp) {
+      Alert.alert(
+        'Profil FTP manquant',
+        'Crée un profil console dans l’onglet FTP avant d’envoyer un fichier.'
+      );
       return;
     }
-    if (outcome.status === 'cancelled') {
-      setStatus({ kind: 'idle' });
+    if (localUri) {
+      const remote = activeFtp.lastPath.endsWith('/')
+        ? `${activeFtp.lastPath}${file.fileName}`
+        : `${activeFtp.lastPath}/${file.fileName}`;
+      enqueueFtpUpload({
+        profileId: activeFtp.id,
+        fileName: file.fileName,
+        localUri,
+        remotePath: remote,
+      });
+      Alert.alert('Ajouté à la file FTP', `${file.fileName} → ${activeFtp.name}`);
       return;
     }
-    setStatus({ kind: 'done', key: file.key });
+    void (async () => {
+      await start(file);
+      Alert.alert(
+        'Téléchargement lancé',
+        'Une fois le fichier prêt, réouvre cette feuille pour l’envoyer via FTP.'
+      );
+    })();
   };
 
   const toggleGroup = (key: string) =>
@@ -74,10 +117,14 @@ function DownloadList({ resource }: { resource: ResourceDetail }) {
     });
 
   const renderFile = (file: DownloadFile) => {
-    const isRunning = status.kind === 'running' && status.key === file.key;
-    const isDone = status.kind === 'done' && status.key === file.key;
-    const isFailed = status.kind === 'error' && status.key === file.key;
+    const job = jobFor(file.key);
+    const isRunning = job?.status === 'running';
+    const isPending = job?.status === 'pending';
+    const isDone = job?.status === 'done';
+    const isFailed = job?.status === 'error';
     const isExternal = file.externalUrl !== null;
+    const ratio = job?.progress ?? null;
+    const localUri = job?.localUri ?? sandboxUri(file.fileName);
 
     const meta = [
       file.version ? `v${file.version}` : null,
@@ -88,74 +135,101 @@ function DownloadList({ resource }: { resource: ResourceDetail }) {
       .join(' · ');
 
     return (
-      <AnimatedPressable
-        key={file.key}
-        onPress={isRunning ? undefined : () => void start(file)}
-        disabled={isRunning}
-        scale={0.985}
-        style={[styles.file, { backgroundColor: colors.card, borderColor: colors.border }]}
-        accessibilityRole="button"
-        accessibilityLabel={`Télécharger ${file.label}`}
-      >
-        <View
-          style={[
-            styles.fileIcon,
-            {
-              backgroundColor: isDone
-                ? `${colors.success}1F`
-                : isFailed
-                  ? `${colors.danger}1F`
-                  : `${colors.primary}1F`,
-            },
-          ]}
+      <View key={file.key} style={styles.fileBlock}>
+        <AnimatedPressable
+          onPress={() => {
+            if (isRunning || isPending) return;
+            if (isFailed && job) {
+              retryDownloadJob(job.id);
+              return;
+            }
+            void start(file);
+          }}
+          disabled={isRunning || isPending}
+          scale={0.985}
+          style={[styles.file, { backgroundColor: colors.card, borderColor: colors.border }]}
+          accessibilityRole="button"
+          accessibilityLabel={`Télécharger ${file.label}`}
         >
-          {isRunning ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : isDone ? (
-            <CheckCircle2 size={18} color={colors.success} strokeWidth={2.4} />
-          ) : isExternal ? (
-            <ExternalLink size={17} color={colors.primary} strokeWidth={2.4} />
-          ) : (
-            <FileDown size={17} color={isFailed ? colors.danger : colors.primary} strokeWidth={2.4} />
-          )}
-        </View>
+          <View
+            style={[
+              styles.fileIcon,
+              {
+                backgroundColor: isDone || localUri
+                  ? `${colors.success}1F`
+                  : isFailed
+                    ? `${colors.danger}1F`
+                    : `${colors.primary}1F`,
+              },
+            ]}
+          >
+            {isRunning || isPending ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : isDone || localUri ? (
+              <CheckCircle2 size={18} color={colors.success} strokeWidth={2.4} />
+            ) : isFailed ? (
+              <RotateCcw size={17} color={colors.danger} strokeWidth={2.4} />
+            ) : isExternal ? (
+              <ExternalLink size={17} color={colors.primary} strokeWidth={2.4} />
+            ) : (
+              <FileDown size={17} color={colors.primary} strokeWidth={2.4} />
+            )}
+          </View>
 
-        <View style={styles.fileBody}>
-          <Typography variant="title" numberOfLines={1}>
-            {file.label}
-          </Typography>
-          {isRunning ? (
-            <Typography variant="caption" color="secondary">
-              {status.ratio === null
-                ? 'Téléchargement…'
-                : `${Math.round(status.ratio * 100)} %`}
+          <View style={styles.fileBody}>
+            <Typography variant="title" numberOfLines={1}>
+              {file.label}
             </Typography>
-          ) : isFailed ? (
-            <Typography variant="caption" color="danger" numberOfLines={2}>
-              {status.message}
-            </Typography>
-          ) : isDone ? (
-            <Typography variant="caption" color="success">
-              Terminé
-            </Typography>
-          ) : meta ? (
-            <Typography variant="caption" color="secondary" numberOfLines={1}>
-              {meta}
-            </Typography>
-          ) : null}
+            {isRunning ? (
+              <Typography variant="caption" color="secondary">
+                {ratio === null ? 'Téléchargement…' : `${Math.round(ratio * 100)} %`}
+              </Typography>
+            ) : isPending ? (
+              <Typography variant="caption" color="secondary">
+                En file d’attente…
+              </Typography>
+            ) : isFailed ? (
+              <Typography variant="caption" color="danger" numberOfLines={2}>
+                {job?.error ?? 'Échec — appuie pour réessayer'}
+              </Typography>
+            ) : isDone || localUri ? (
+              <Typography variant="caption" color="success">
+                {isDone ? 'Terminé' : 'Déjà sur l’appareil'}
+              </Typography>
+            ) : meta ? (
+              <Typography variant="caption" color="secondary" numberOfLines={1}>
+                {meta}
+              </Typography>
+            ) : null}
 
-          {isRunning && status.ratio !== null ? (
-            <View style={[styles.progressTrack, { backgroundColor: colors.glass }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { backgroundColor: colors.primary, width: `${status.ratio * 100}%` },
-                ]}
-              />
-            </View>
-          ) : null}
-        </View>
-      </AnimatedPressable>
+            {isRunning && ratio !== null ? (
+              <View style={[styles.progressTrack, { backgroundColor: colors.glass }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { backgroundColor: colors.primary, width: `${ratio * 100}%` },
+                  ]}
+                />
+              </View>
+            ) : null}
+          </View>
+        </AnimatedPressable>
+
+        {!isExternal && !isRunning && !isPending ? (
+          <AnimatedPressable
+            onPress={() => sendViaFtp(file, localUri)}
+            scale={0.985}
+            style={[styles.ftpRow, { backgroundColor: colors.item, borderColor: colors.border }]}
+            accessibilityRole="button"
+            accessibilityLabel={`Envoyer ${file.label} via FTP`}
+          >
+            <HardDrive size={15} color={colors.primary} strokeWidth={2.3} />
+            <Typography variant="caption" color="secondary" style={styles.flex}>
+              {localUri ? 'Envoyer via FTP' : 'Télécharger puis envoyer via FTP'}
+            </Typography>
+          </AnimatedPressable>
+        ) : null}
+      </View>
     );
   };
 
@@ -210,8 +284,7 @@ function DownloadList({ resource }: { resource: ResourceDetail }) {
       <View style={styles.note}>
         <Download size={13} color={colors.textTertiary} strokeWidth={2.2} />
         <Typography variant="caption" color="tertiary" style={styles.flex}>
-          Le fichier est enregistré dans l’app, puis le menu de partage s’ouvre pour le
-          ranger où tu veux.
+          Les fichiers partent en file d’attente (un à la fois). Suivi dans Téléchargements.
         </Typography>
       </View>
     </ScrollView>
@@ -240,6 +313,9 @@ const styles = StyleSheet.create({
   groupBody: {
     gap: spacing.sm,
   },
+  fileBlock: {
+    gap: spacing.xs,
+  },
   file: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -260,6 +336,16 @@ const styles = StyleSheet.create({
   fileBody: {
     flex: 1,
     gap: 3,
+  },
+  ftpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
+    borderWidth: StyleSheet.hairlineWidth * 2,
   },
   progressTrack: {
     height: 3,

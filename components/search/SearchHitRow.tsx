@@ -7,7 +7,7 @@ import {
   User,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { SearchHit, SearchHitType } from '@/services/api';
@@ -40,14 +40,11 @@ export interface SearchHitRowProps {
 
 export function SearchHitRow({ hit, onPress }: SearchHitRowProps) {
   const colors = useColors();
-  const [imageFailed, setImageFailed] = useState(false);
+  const [failedUri, setFailedUri] = useState<string | null>(null);
   const Icon = TYPE_ICONS[hit.type];
   const tint = hit.platform ? platformColor(hit.platform) : colors.primary;
   const uri = siteUrl(hit.iconUrl);
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [uri]);
+  const imageFailed = Boolean(uri && failedUri === uri);
 
   return (
     <AnimatedPressable
@@ -71,7 +68,7 @@ export function SearchHitRow({ hit, onPress }: SearchHitRowProps) {
             contentFit="cover"
             transition={0}
             cachePolicy="memory-disk"
-            onError={() => setImageFailed(true)}
+            onError={() => setFailedUri(uri)}
           />
         ) : (
           <Icon size={17} color={tint} strokeWidth={2.2} />

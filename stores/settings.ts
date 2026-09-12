@@ -20,10 +20,16 @@ interface SettingsState {
   consentDate: string | null;
   catalogueLayout: CatalogueLayout;
   hapticsEnabled: boolean;
+  /** Local notification when a queued download finishes. */
+  downloadNotifications: boolean;
+  /** Last app version for which the changelog sheet was shown. */
+  lastSeenAppVersion: string | null;
   setTheme: (theme: ThemePreference) => void;
   setConsent: (consent: Exclude<ConsentLevel, 'unset'>) => void;
   setCatalogueLayout: (layout: CatalogueLayout) => void;
   setHapticsEnabled: (enabled: boolean) => void;
+  setDownloadNotifications: (enabled: boolean) => void;
+  setLastSeenAppVersion: (version: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -35,10 +41,14 @@ export const useSettingsStore = create<SettingsState>()(
       consentDate: null,
       catalogueLayout: 'grid',
       hapticsEnabled: true,
+      downloadNotifications: false,
+      lastSeenAppVersion: null,
       setTheme: (theme) => set({ theme }),
       setConsent: (consent) => set({ consent, consentDate: new Date().toISOString() }),
       setCatalogueLayout: (catalogueLayout) => set({ catalogueLayout }),
       setHapticsEnabled: (hapticsEnabled) => set({ hapticsEnabled }),
+      setDownloadNotifications: (downloadNotifications) => set({ downloadNotifications }),
+      setLastSeenAppVersion: (lastSeenAppVersion) => set({ lastSeenAppVersion }),
     }),
     {
       name: 'lbxmb.settings',

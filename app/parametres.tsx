@@ -1,6 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import {
   BarChart3,
+  Bell,
   ExternalLink,
   FileLock2,
   HardDrive,
@@ -18,6 +19,7 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { WEB_URLS } from '@/services/api';
 import { clearDownloadedFiles, downloadedBytes, formatBytes } from '@/services/download';
+import { ensureNotificationPermission } from '@/services/notifications';
 import { useSettingsStore, type ThemePreference } from '@/stores/settings';
 import {
   Chip,
@@ -47,6 +49,8 @@ export default function SettingsScreen() {
   const consentDate = useSettingsStore((state) => state.consentDate);
   const haptics = useSettingsStore((state) => state.hapticsEnabled);
   const setHaptics = useSettingsStore((state) => state.setHapticsEnabled);
+  const downloadNotifications = useSettingsStore((state) => state.downloadNotifications);
+  const setDownloadNotifications = useSettingsStore((state) => state.setDownloadNotifications);
 
   const [cacheSize, setCacheSize] = useState(() => downloadedBytes());
 
@@ -110,6 +114,22 @@ export default function SettingsScreen() {
                 <Switch
                   value={haptics}
                   onValueChange={setHaptics}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                  thumbColor={colors.onPrimary}
+                />
+              }
+            />
+            <List.Item
+              title="Notifs téléchargements"
+              subtitle="Alerte locale quand un fichier est prêt"
+              leading={<IconBadge icon={Bell} color={colors.accent} size={30} />}
+              trailing={
+                <Switch
+                  value={downloadNotifications}
+                  onValueChange={(enabled) => {
+                    setDownloadNotifications(enabled);
+                    if (enabled) void ensureNotificationPermission();
+                  }}
                   trackColor={{ true: colors.primary, false: colors.border }}
                   thumbColor={colors.onPrimary}
                 />
