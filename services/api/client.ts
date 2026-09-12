@@ -1,4 +1,5 @@
-import { API_BASE_URL, REQUEST_TIMEOUT_MS } from './config';
+import { API_BASE_URL, APP_USER_AGENT, REQUEST_TIMEOUT_MS } from './config';
+
 
 export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'parse';
 
@@ -84,6 +85,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
+        'User-Agent': APP_USER_AGENT,
         // FormData sets its own content type, boundary included.
         ...(body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

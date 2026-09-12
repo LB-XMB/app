@@ -1,7 +1,6 @@
-import Constants from 'expo-constants';
-import { Dimensions, Platform } from 'react-native';
+import { Dimensions } from 'react-native';
 
-import { UMAMI_HOST, UMAMI_WEBSITE_ID } from '@/services/api';
+import { APP_USER_AGENT, UMAMI_HOST, UMAMI_WEBSITE_ID } from '@/services/api';
 import { useSettingsStore } from '@/stores/settings';
 
 /**
@@ -13,7 +12,6 @@ import { useSettingsStore } from '@/stores/settings';
  */
 
 const HOSTNAME = 'app.lbxmb.fr';
-const USER_AGENT = `LBXMB-App/${Constants.expoConfig?.version ?? '1.0.0'} (${Platform.OS})`;
 
 interface UmamiPayload {
   website: string;
@@ -38,7 +36,7 @@ async function send(type: 'event', payload: UmamiPayload): Promise<void> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': USER_AGENT,
+        'User-Agent': APP_USER_AGENT,
       },
       body: JSON.stringify({ type, payload }),
     });

@@ -1,6 +1,7 @@
 export { ApiError, request, type ApiErrorKind } from './client';
 export {
   API_BASE_URL,
+  APP_USER_AGENT,
   REQUEST_TIMEOUT_MS,
   UMAMI_HOST,
   UMAMI_WEBSITE_ID,
