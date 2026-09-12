@@ -40,13 +40,13 @@ Le même tag déclenche deux pipelines, sur deux forges différentes.
 
 Côté Forgejo, trois jobs s’enchaînent : `release` valide le tag, génère les notes
 depuis les commits et crée la release ; `android` part d’une image Docker
-pré-cuite (`lbxmb-android-builder`, voir
+pré-cuite (`game.lbxmb.fr:8443/lbxmb/android-builder`, voir
 [`ci/android-builder/`](../ci/android-builder/)), lance `prebuild` puis
 `assembleRelease` (ABI **arm64-v8a** seule), signe et attache l’APK ; `ios`
 récupère l’IPA et l’attache à son tour.
 
-Avant la **première** release après un changement de pins SDK/NDK, construire
-l’image sur l’hôte du runner :
+Avant la **première** release (ou après un changement de pins SDK/NDK),
+construire et pousser l’image :
 
 ```bash
 ./ci/android-builder/build.sh
