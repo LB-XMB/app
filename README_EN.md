@@ -51,13 +51,13 @@
 
 | Platform | How |
 |---|---|
-| **Android — Obtainium** | Install [Obtainium](https://github.com/ImranR98/Obtainium/releases), then open the badge below. Use source **Forgejo (Codeberg)** and repo `https://git.lbxmb.fr/lbxmb/app` (APKs live under [`/releases`](https://git.lbxmb.fr/lbxmb/app/releases)). |
+| **Android — Obtainium** | Install [Obtainium](https://github.com/ImranR98/Obtainium/releases), then open the badge below. Open the Obtainium badge (**HTML** source → [`/releases`](https://git.lbxmb.fr/lbxmb/app/releases) page). |
 | **Android — F-Droid** | Not in the official catalogue yet (see [`store/fdroid.md`](./store/fdroid.md)). Obtainium covers the same need. |
 | **iOS — SideStore** | Sources → add<br>`https://git.lbxmb.fr/lbxmb/app/raw/branch/main/store/sidestore.json`<br>Unsigned IPA (SideStore / AltStore / TrollStore). |
 | **Manual** | APK / IPA on the [releases page](https://git.lbxmb.fr/lbxmb/app/releases). |
 
 <p align="center">
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22fr.lbxmb.app%22%2C%22url%22%3A%22https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%22%2C%22author%22%3A%22LB%27XMB%22%2C%22name%22%3A%22LB%27XMB%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22overrideSource%5C%22%3A%5C%22Codeberg%5C%22%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22_android%5C%5C%5C%5C.apk%24%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22Catalogue%20communautaire%20de%20modding%20console.%5C%5CnAPK%20%3A%20https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%2Freleases%5C%22%7D%22%7D"><img src="https://img.shields.io/badge/Get_on-Obtainium-2E7D32?style=for-the-badge&logo=android&logoColor=white" alt="Obtainium" /></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22fr.lbxmb.app%22%2C%22url%22%3A%22https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%2Freleases%22%2C%22author%22%3A%22LB%27XMB%22%2C%22name%22%3A%22LB%27XMB%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22overrideSource%5C%22%3A%5C%22HTML%5C%22%2C%5C%22customLinkFilterRegex%5C%22%3A%5C%22android.apk%24%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22android.apk%24%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Afalse%2C%5C%22sortByLastLinkSegment%5C%22%3Atrue%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22%28%5B0-9%5D%2B%5C%5C%5C%5C.%5B0-9%5D%2B%5C%5C%5C%5C.%5B0-9%5D%2B%29%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%221%5C%22%2C%5C%22about%5C%22%3A%5C%22Catalogue%20communautaire%20de%20modding%20console%20%28source%20HTML%20Forgejo%29.%5C%22%7D%22%7D"><img src="https://img.shields.io/badge/Get_on-Obtainium-2E7D32?style=for-the-badge&logo=android&logoColor=white" alt="Obtainium" /></a>
   &nbsp;
   <a href="sidestore://source?url=https%3A%2F%2Fgit.lbxmb.fr%2Flbxmb%2Fapp%2Fraw%2Fbranch%2Fmain%2Fstore%2Fsidestore.json"><img src="https://img.shields.io/badge/Add_in-SideStore-5C6BC0?style=for-the-badge&logo=apple&logoColor=white" alt="SideStore" /></a>
   &nbsp;
@@ -66,7 +66,7 @@
 
 Configs: [`store/obtainium.json`](./store/obtainium.json), [`store/sidestore.json`](./store/sidestore.json).
 
-> **Obtainium**: open the badge, or add `https://git.lbxmb.fr/lbxmb/app` manually (**no** `/releases`) with source **Forgejo (Codeberg)** (JSON value: `Codeberg`). Keep *Fallback to older releases* on: the latest tag may have no APK until the Android build finishes. Config: [`store/obtainium.json`](./store/obtainium.json).
+> **Obtainium**: delete the old entry, then re-import the badge. Config uses the **HTML** source on `…/releases` (more reliable than the Forgejo API in Obtainium). File: [`store/obtainium.json`](./store/obtainium.json).
 
 ## Features
 

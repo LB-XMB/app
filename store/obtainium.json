@@ -1,8 +1,8 @@
 {
   "id": "fr.lbxmb.app",
-  "url": "https://git.lbxmb.fr/lbxmb/app",
+  "url": "https://git.lbxmb.fr/lbxmb/app/releases",
   "author": "LB'XMB",
   "name": "LB'XMB",
   "preferredApkIndex": 0,
-  "additionalSettings": "{\"overrideSource\":\"Codeberg\",\"fallbackToOlderReleases\":true,\"includePrereleases\":false,\"apkFilterRegEx\":\"_android\\\\.apk$\",\"invertAPKFilter\":false,\"autoApkFilterByArch\":false,\"about\":\"Catalogue communautaire de modding console.\\nAPK : https://git.lbxmb.fr/lbxmb/app/releases\"}"
+  "additionalSettings": "{\"overrideSource\":\"HTML\",\"customLinkFilterRegex\":\"android.apk$\",\"apkFilterRegEx\":\"android.apk$\",\"invertAPKFilter\":false,\"autoApkFilterByArch\":false,\"sortByLastLinkSegment\":true,\"versionExtractionRegEx\":\"([0-9]+\\\\.[0-9]+\\\\.[0-9]+)\",\"matchGroupToUse\":\"1\",\"about\":\"Catalogue communautaire de modding console (source HTML Forgejo).\"}"
 }
