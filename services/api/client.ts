@@ -83,9 +83,13 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     response = await fetch(buildUrl(path, query), {
       method,
       signal: controller.signal,
+      // Never send site cookies: Better Auth treats Cookie without Origin as CSRF (403).
+      credentials: 'omit',
       headers: {
         Accept: 'application/json',
         'User-Agent': APP_USER_AGENT,
+        // Trusted origin for Better Auth when a cookie jar still attaches visitor_token.
+        Origin: API_BASE_URL,
         // FormData sets its own content type, boundary included.
         ...(body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
