@@ -1,24 +1,27 @@
 # Image CI Android (`lbxmb-android-builder`)
 
 Image Docker avec Node 22, JDK 17, Android SDK (platform 36), NDK et CMake.
-Le job `android` du workflow release l’utilise pour **ne plus télécharger** le
-SDK à chaque tag.
+Le job `android` du workflow release la tire depuis le registry LBXMB.
 
-## Construire (sur l’hôte du runner Forgejo)
+## Construire et publier
+
+Sur une machine qui peut pusher vers `game.lbxmb.fr:8443` :
 
 ```bash
 cd /chemin/vers/app
 ./ci/android-builder/build.sh
 ```
 
-Tag produit / attendu par `.forgejo/workflows/release.yml` :
-`lbxmb-android-builder:sdk36-ndk27`.
+Image publiée / attendue par `.forgejo/workflows/release.yml` :
 
-Image **strictement locale** : pas de registry. Avec `force_pull: false` sur le
-runner, Docker démarre l’image déjà présente sans `docker pull`.
+```text
+game.lbxmb.fr:8443/lbxmb/android-builder:sdk36-ndk27
+```
 
-Ne pas référencer `localhost:5001/...` dans le workflow : Docker tente d’abord
-HTTPS vers le registry et échoue (`connection refused`).
+Pull public (déjà testé) : pas besoin de login côté runner pour tirer.
+
+Ne pas utiliser `localhost:5001/...` ni un tag purement local : le runner
+Forgejo n’a pas forcément l’image sur son daemon Docker.
 
 Rebuild uniquement quand les pins SDK/NDK du `Dockerfile` changent.
 
@@ -27,7 +30,7 @@ Rebuild uniquement quand les pins SDK/NDK du `Dockerfile` changent.
 | Setup | Durée typique |
 |---|---|
 | Ancien (sdkmanager à chaque run) | ~10–17 min |
-| Image + arm64 | ~4–8 min |
+| Image registry + arm64 | ~4–8 min |
 | + volumes Gradle/npm (si `valid_volumes`) | ~3–6 min |
 
 ## Volumes de cache
