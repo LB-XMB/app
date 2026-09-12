@@ -26,9 +26,23 @@
 </p>
 
 <p align="center">
-  <img src="./docs/previews/ftp.png" alt="FTP tab" width="220">
+  <img src="./docs/previews/01-accueil.png" alt="Home" width="180">
   &nbsp;
-  <img src="./docs/previews/accueil-web.png" alt="Gradient Waves atmosphere (website)" width="220">
+  <img src="./docs/previews/02-catalogue.png" alt="Catalogue" width="180">
+  &nbsp;
+  <img src="./docs/previews/06-ressource.png" alt="Resource detail" width="180">
+  &nbsp;
+  <img src="./docs/previews/03-ftp.png" alt="FTP" width="180">
+</p>
+
+<p align="center">
+  <img src="./docs/previews/07-connexion.png" alt="Sign in" width="180">
+  &nbsp;
+  <img src="./docs/previews/05-profil.png" alt="Profile" width="180">
+  &nbsp;
+  <img src="./docs/previews/08-guides.png" alt="Guides" width="180">
+  &nbsp;
+  <img src="./docs/previews/04-recherche.png" alt="Search" width="180">
 </p>
 
 ---

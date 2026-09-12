@@ -14,11 +14,19 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.0.4",
+          "date": "2026-09-12T00:20:00Z",
+          "localizedDescription": "Previews README, correctif scroll catalogue, lecteur vidéo, Gradient Waves login, FTP et Obtainium.",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.4/lbxmb_1.0.4_ios-unsigned.ipa",
+          "size": 18869576,
+          "minOSVersion": "16.4"
+        },
+        {
           "version": "1.0.3",
           "date": "2026-09-12T00:00:00Z",
           "localizedDescription": "Auth, forum, actualités, FTP, médias et Liquid Glass.",
           "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.3/lbxmb_1.0.3_ios-unsigned.ipa",
-          "size": 18000000,
+          "size": 18869576,
           "minOSVersion": "16.4"
         }
       ],
