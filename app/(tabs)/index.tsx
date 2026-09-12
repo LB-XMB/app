@@ -98,7 +98,7 @@ export default function HomeScreen() {
               onAction={() => router.push('/actualites')}
             />
             <View style={styles.rows}>
-              {news.data?.map((item, index) => (
+              {news.data?.map((item) => (
                 <NewsRow key={item.id} item={item} />
               ))}
             </View>
