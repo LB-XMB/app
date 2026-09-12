@@ -3,26 +3,23 @@ import * as WebBrowser from 'expo-web-browser';
 
 import type { SessionUser } from '@/stores/session';
 
-import { request } from './client';
-import { API_BASE_URL } from './config';
+import { ApiError, request, requestAuthSession } from './client';
+import { API_BASE_URL, SITE_AUTH_EMAIL_DOMAIN } from './config';
 
 /**
- * Sign-in flow.
+ * Sign-in for the mobile app.
  *
- * The website owns every authentication method: password with its anti-bot and
- * TOTP step, Discord OAuth and passkeys. Reimplementing any of them in the app
- * would mean bypassing those protections, so the app delegates the whole thing
- * to the site, opened in the system browser, and only collects a session token
- * at the end. That token is the challenge exchange already used by the QR login
- * of the PS4 app: the secret is minted by the server and never travels through
- * a redirect URL.
+ * - Password / register: Better Auth directly (no Cap), Bearer session token.
+ * - Discord / « Continuer sur le site »: web challenge (`/api/auth/qr/*` route
+ *   name is historical — the app never shows a QR code). Opens `/app/autoriser`
+ *   then claim → same Bearer session token as password login.
  */
 
 const POLL_INTERVAL_MS = 1500;
 /** After the user returns to the app, keep polling in case approve just landed. */
 const LATE_APPROVAL_CHECKS = 12;
 
-export type AuthFailureReason = 'cancelled' | 'expired';
+export type AuthFailureReason = 'cancelled' | 'expired' | 'failed';
 
 export class AuthError extends Error {
   readonly reason: AuthFailureReason;
@@ -34,9 +31,9 @@ export class AuthError extends Error {
   }
 
   get userMessage(): string {
-    return this.reason === 'expired'
-      ? 'La demande de connexion a expiré. Réessaie.'
-      : 'Connexion annulée.';
+    if (this.reason === 'expired') return 'La demande de connexion a expiré. Réessaie.';
+    if (this.reason === 'cancelled') return 'Connexion annulée.';
+    return this.message || 'La connexion a échoué. Réessaie.';
   }
 }
 
@@ -44,6 +41,7 @@ interface ChallengeResponse {
   token: string;
   code: string;
   expiresIn: number;
+  verifyUrl?: string;
 }
 
 interface StatusResponse {
@@ -63,6 +61,7 @@ interface MeResponse {
     user_id?: string | number;
     pseudo?: string | null;
     photo?: string | null;
+    has_a2f?: boolean;
   };
 }
 
@@ -71,13 +70,57 @@ export interface AuthSuccess {
   user: SessionUser;
 }
 
-/** Entry point the website should land on, so the user skips a step. */
-export type AuthMethod = 'discord' | 'password' | 'passkey' | 'register';
+/**
+ * Browser challenge methods. Password / register use in-app modals instead.
+ * `site` = « Continuer sur le site » (passkey / A2F / validation web).
+ */
+export type AuthMethod = 'discord' | 'site' | 'register';
 
 /** Page of the website that asks the user to approve this app. */
 function approvalUrl(token: string, method: AuthMethod): string {
-  const query = new URLSearchParams({ token, methode: method });
+  // Map to the website's `methode` query (autoriser → /login entry points).
+  const methode =
+    method === 'site' ? 'password' : method === 'register' ? 'register' : method;
+  const query = new URLSearchParams({ token, methode });
   return `${API_BASE_URL}/app/autoriser?${query.toString()}`;
+}
+
+function syntheticEmail(username: string): string {
+  const local = username
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]/g, '')
+    .slice(0, 64);
+  return `${local}@${SITE_AUTH_EMAIL_DOMAIN}`;
+}
+
+function mapAuthHttpError(error: unknown, fallback: string): AuthError {
+  if (error instanceof AuthError) return error;
+  if (error instanceof ApiError) {
+    const msg = (error.serverMessage || '').toLowerCase();
+    if (
+      error.status === 403 ||
+      msg.includes('a2f') ||
+      msg.includes('2fa') ||
+      msg.includes('totp') ||
+      msg.includes('two factor')
+    ) {
+      return new AuthError(
+        'failed',
+        'Ce compte nécessite une validation sur le site (A2F ou protection). Utilise « Continuer sur le site ».'
+      );
+    }
+    if (error.status === 401) {
+      return new AuthError('failed', error.serverMessage || 'Identifiant ou mot de passe incorrect.');
+    }
+    if (msg.includes('already') || msg.includes('existe') || msg.includes('taken')) {
+      return new AuthError('failed', error.serverMessage || 'Ce pseudo ou cet e-mail est déjà utilisé.');
+    }
+    return new AuthError('failed', error.userMessage || fallback);
+  }
+  if (error instanceof Error && error.message) {
+    return new AuthError('failed', error.message);
+  }
+  return new AuthError('failed', fallback);
 }
 
 /**
@@ -87,11 +130,17 @@ function approvalUrl(token: string, method: AuthMethod): string {
  */
 export async function signInWithBrowser(method: AuthMethod): Promise<AuthSuccess> {
   // Better Auth expects a JSON body on this endpoint, even an empty one.
-  const challenge = await request<ChallengeResponse>('/api/auth/qr/create', {
-    method: 'POST',
-    body: {},
-  });
+  let challenge: ChallengeResponse;
+  try {
+    challenge = await request<ChallengeResponse>('/api/auth/qr/create', {
+      method: 'POST',
+      body: {},
+    });
+  } catch (error) {
+    throw mapAuthHttpError(error, 'Impossible de démarrer la connexion via le site.');
+  }
 
+  // Intentionally ignore challenge.verifyUrl (/login?qr=…) — we need `methode`.
   const url = approvalUrl(challenge.token, method);
   const deadline = Date.now() + challenge.expiresIn * 1000;
 
@@ -125,6 +174,89 @@ export async function signInWithBrowser(method: AuthMethod): Promise<AuthSuccess
   }
 
   return { token: claimed.sessionToken, user: await fetchSessionUser(claimed.sessionToken) };
+}
+
+/** In-app password login via Better Auth (same Bearer token as claim). */
+export async function signInWithPassword(input: {
+  identifier: string;
+  password: string;
+}): Promise<AuthSuccess> {
+  const identifier = input.identifier.trim();
+  const password = input.password;
+  if (!identifier || !password) {
+    throw new AuthError('failed', 'Indique ton pseudo (ou e-mail) et ton mot de passe.');
+  }
+
+  const isEmail = identifier.includes('@');
+  const path = isEmail ? '/api/auth/sign-in/email' : '/api/auth/sign-in/username';
+  const body = isEmail
+    ? { email: identifier, password, rememberMe: true }
+    : { username: identifier, password, rememberMe: true };
+
+  try {
+    const { token } = await requestAuthSession(path, { method: 'POST', body });
+    return { token, user: await fetchSessionUser(token) };
+  } catch (error) {
+    throw mapAuthHttpError(error, 'Connexion impossible.');
+  }
+}
+
+/** In-app registration via Better Auth + register-complete. */
+export async function registerWithPassword(input: {
+  username: string;
+  password: string;
+  displayName?: string;
+}): Promise<AuthSuccess> {
+  const username = input.username.trim();
+  const password = input.password;
+  const displayName = input.displayName?.trim() || username;
+
+  if (username.length < 3) {
+    throw new AuthError('failed', 'Le pseudo doit faire au moins 3 caractères.');
+  }
+  if (password.length < 8) {
+    throw new AuthError('failed', 'Le mot de passe doit faire au moins 8 caractères.');
+  }
+
+  try {
+    const availability = await request<{ available?: boolean; reason?: string }>(
+      '/api/auth/username-available',
+      { query: { username } }
+    );
+    if (availability.available === false) {
+      throw new AuthError(
+        'failed',
+        availability.reason || 'Ce pseudo est déjà pris. Choisis-en un autre.'
+      );
+    }
+
+    const email = syntheticEmail(username);
+    const { token } = await requestAuthSession('/api/auth/sign-up/email', {
+      method: 'POST',
+      body: {
+        email,
+        password,
+        name: displayName,
+        username,
+      },
+    });
+
+    await request('/api/auth/register-complete', {
+      method: 'POST',
+      token,
+      body: {
+        username,
+        displayName,
+        langue: 'fr',
+        pays: 'FR',
+      },
+    }).catch(() => undefined);
+
+    return { token, user: await fetchSessionUser(token) };
+  } catch (error) {
+    if (error instanceof AuthError) throw error;
+    throw mapAuthHttpError(error, 'Création de compte impossible.');
+  }
 }
 
 /**

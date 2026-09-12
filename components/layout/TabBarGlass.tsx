@@ -1,7 +1,3 @@
-import {
-  isLiquidGlassSupported,
-  LiquidGlassView,
-} from '@callstack/liquid-glass';
 import type { ReactNode } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
@@ -17,23 +13,10 @@ export interface TabBarGlassProps {
 /**
  * Floating pill of the tab bar.
  *
- * On iOS 26 the real Liquid Glass material is used; everywhere else the
- * children provide the BlurView fallback.
+ * iOS uses a plain clipped View (Liquid Glass was hard to read). Android /
+ * others keep the same container; blur/overlay live in TabBar children.
  */
-export function TabBarGlass({ children, scheme, borderColor }: TabBarGlassProps) {
-  if (Platform.OS === 'ios' && isLiquidGlassSupported) {
-    return (
-      <LiquidGlassView
-        effect="regular"
-        interactive
-        colorScheme={scheme}
-        style={[styles.pill, styles.glass]}
-      >
-        {children}
-      </LiquidGlassView>
-    );
-  }
-
+export function TabBarGlass({ children, borderColor }: TabBarGlassProps) {
   return <View style={[styles.pill, { borderColor }]}>{children}</View>;
 }
 
@@ -48,17 +31,12 @@ const styles = StyleSheet.create({
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOpacity: 0.3,
-        shadowRadius: 18,
+        shadowOpacity: 0.28,
+        shadowRadius: 16,
         shadowOffset: { width: 0, height: 8 },
       },
       android: { elevation: 12 },
       default: {},
     }),
-  },
-  glass: {
-    // Liquid Glass draws its own border and fill.
-    overflow: 'visible',
-    borderWidth: 0,
   },
 });

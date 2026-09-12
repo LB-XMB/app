@@ -1,8 +1,10 @@
 export { ApiError, request, type ApiErrorKind } from './client';
 export {
   API_BASE_URL,
+  APP_CLIENT_HEADER,
   APP_USER_AGENT,
   REQUEST_TIMEOUT_MS,
+  SITE_AUTH_EMAIL_DOMAIN,
   UMAMI_HOST,
   UMAMI_WEBSITE_ID,
   WEB_URLS,
@@ -10,7 +12,9 @@ export {
 export {
   AuthError,
   fetchSessionUser,
+  registerWithPassword,
   signInWithBrowser,
+  signInWithPassword,
   signOut,
   type AuthFailureReason,
   type AuthMethod,

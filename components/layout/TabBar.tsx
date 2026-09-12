@@ -74,27 +74,29 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     </View>
   );
 
+  const overlay =
+    scheme === 'dark'
+      ? Platform.OS === 'ios'
+        ? 'rgba(17, 19, 26, 0.92)'
+        : 'rgba(17, 19, 26, 0.55)'
+      : Platform.OS === 'ios'
+        ? 'rgba(255, 255, 255, 0.92)'
+        : 'rgba(255, 255, 255, 0.55)';
+
   return (
     <View
       style={[styles.wrapper, { paddingBottom: insets.bottom + tabBarInset }]}
       pointerEvents="box-none"
     >
       <TabBarGlass scheme={scheme} borderColor={colors.border}>
-        {/* Fallback blur, kept under the liquid glass when it is available. */}
-        <BlurView
-          intensity={Platform.OS === 'android' ? 40 : 70}
-          tint={scheme === 'dark' ? 'systemThickMaterialDark' : 'systemThickMaterialLight'}
-          style={StyleSheet.absoluteFill}
-        />
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor:
-                scheme === 'dark' ? 'rgba(17, 19, 26, 0.55)' : 'rgba(255, 255, 255, 0.55)',
-            },
-          ]}
-        />
+        {Platform.OS === 'android' ? (
+          <BlurView
+            intensity={40}
+            tint={scheme === 'dark' ? 'systemThickMaterialDark' : 'systemThickMaterialLight'}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: overlay }]} />
         {tabs}
       </TabBarGlass>
     </View>
@@ -112,7 +114,7 @@ const styles = StyleSheet.create({
   },
   track: {
     flexDirection: 'row',
-    paddingVertical: 9,
+    paddingVertical: 10,
   },
   tab: {
     flex: 1,
@@ -122,7 +124,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   label: {
-    fontSize: 9.5,
+    fontSize: 11,
     letterSpacing: 0.3,
   },
 });

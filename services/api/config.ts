@@ -24,6 +24,15 @@ const PLATFORM_LABEL =
 
 export const APP_USER_AGENT = `LBXMB-App/${Constants.expoConfig?.version ?? '1.0.0'} (${PLATFORM_LABEL})`;
 
+/**
+ * Custom client marker for Cloudflare Skip (iOS often strips / ignores User-Agent).
+ * Pair with the WAF rule in `docs/cloudflare-app-ua.md`.
+ */
+export const APP_CLIENT_HEADER = 'app';
+
+/** Synthetic email domain used by the website for username-based accounts. */
+export const SITE_AUTH_EMAIL_DOMAIN = 'users.noreply.lbxmb.fr';
+
 /** Public pages of the website, linked from the app. */
 export const WEB_URLS = {
   home: API_BASE_URL,

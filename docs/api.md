@@ -78,6 +78,38 @@ résultats hétérogènes (`resource`, `guide`, `forum_thread`, `shop`, `profile
 ressources et les guides ouvrent un écran natif ; les autres types ouvrent le site dans le
 navigateur, faute d’équivalent dans l’application.
 
+## Auth application (hors OpenAPI public)
+
+L’OpenAPI publique ne documente pas l’auth. L’app utilise Better Auth + un challenge web
+nommé `qr` (historique PS4) — **sans afficher de QR code**.
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| `POST` | `/api/auth/qr/create` | Crée un challenge ; l’app ignore `verifyUrl` |
+| `GET` | `/api/auth/qr/status?token=` | Poll jusqu’à `approved` + `exchangeToken` |
+| `POST` | `/api/auth/qr/claim` | Échange → `sessionToken` (Bearer) |
+| `GET` | `/api/auth/me` | Profil (`Authorization: Bearer …`) |
+| `POST` | `/api/auth/logout` | Invalide la session |
+| `POST` | `/api/auth/sign-in/username` | Login mdp in-app → `{ token, user }` |
+| `POST` | `/api/auth/sign-in/email` | Idem si l’identifiant contient `@` |
+| `GET` | `/api/auth/username-available?username=` | Dispo à l’inscription |
+| `POST` | `/api/auth/sign-up/email` | Inscription → `{ token, user }` |
+| `POST` | `/api/auth/register-complete` | Finalise pseudo / locale après sign-up |
+
+**Headers app** : `User-Agent: LBXMB-App/…`, `X-LBXMB-Client: app`, `Origin: https://lbxmb.fr`.
+Voir [`cloudflare-app-ua.md`](./cloudflare-app-ua.md).
+
+**URL navigateur** : l’app ouvre `/app/autoriser?token=…&methode=…` (deep-link méthode).
+Le `verifyUrl` renvoyé par `create` (`/login?qr=TOKEN`) n’est **pas** utilisé — il sert au
+flux site générique, sans `methode`.
+
+**Email synthétique** à l’inscription : `{username}@users.noreply.lbxmb.fr` (même domaine
+que le site). Cap / A2F du flux `site-login` ne sont **pas** réimplémentés ; A2F →
+« Continuer sur le site ».
+
+**Jeton** : `token` Better Auth (sign-in / sign-up) = même `session.token` que
+`sessionToken` après `claim` — utilisable en Bearer sur `/api/auth/me`.
+
 ## CORS
 
 L’API ne renvoie pas d’en-tête `Access-Control-Allow-Origin`. Ce n’est pas un problème sur

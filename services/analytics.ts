@@ -1,6 +1,6 @@
 import { Dimensions } from 'react-native';
 
-import { APP_USER_AGENT, UMAMI_HOST, UMAMI_WEBSITE_ID } from '@/services/api';
+import { APP_CLIENT_HEADER, APP_USER_AGENT, UMAMI_HOST, UMAMI_WEBSITE_ID } from '@/services/api';
 import { useSettingsStore } from '@/stores/settings';
 
 /**
@@ -37,6 +37,7 @@ async function send(type: 'event', payload: UmamiPayload): Promise<void> {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': APP_USER_AGENT,
+        'X-LBXMB-Client': APP_CLIENT_HEADER,
       },
       body: JSON.stringify({ type, payload }),
     });

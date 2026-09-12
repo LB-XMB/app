@@ -24,7 +24,7 @@ export const radius = {
 export const screenPadding = spacing.lg;
 
 /** Extra bottom padding so content clears the floating tab bar. */
-export const tabBarHeight = 64;
+export const tabBarHeight = 68;
 export const tabBarInset = 12;
 
 export const duration = {

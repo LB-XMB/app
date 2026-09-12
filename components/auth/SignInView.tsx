@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Fingerprint, KeyRound, MessageCircle, UserPlus } from 'lucide-react-native';
+import { ChevronLeft, Globe, KeyRound, MessageCircle, UserPlus } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Reanimated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -7,15 +7,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Logo } from '@/components/brand/Logo';
 import { ApiError } from '@/services/api';
-import { AuthError, signInWithBrowser, type AuthMethod } from '@/services/api/auth';
+import {
+  AuthError,
+  signInWithBrowser,
+  type AuthMethod,
+  type AuthSuccess,
+} from '@/services/api/auth';
 import { useSessionStore } from '@/stores/session';
 import { AnimatedPressable, Typography } from '@/ui/components';
 import { radius, screenPadding, spacing, useTheme } from '@/ui/theme';
 
 import { AuthBackdrop } from './AuthBackdrop';
+import { PasswordSignInModal } from './PasswordSignInModal';
+import { RegisterModal } from './RegisterModal';
+
+type UiAction = 'discord' | 'password' | 'site' | 'register';
 
 interface MethodOption {
-  method: AuthMethod;
+  action: UiAction;
   label: string;
   description: string;
   icon: typeof KeyRound;
@@ -25,24 +34,24 @@ interface MethodOption {
 
 const METHODS: MethodOption[] = [
   {
-    method: 'discord',
+    action: 'discord',
     label: 'Continuer avec Discord',
     description: 'Le plus rapide',
     icon: MessageCircle,
     tint: '#5865F2',
   },
   {
-    method: 'password',
+    action: 'password',
     label: 'Compte LB’XMB',
     description: 'Pseudo et mot de passe',
     icon: KeyRound,
     tint: null,
   },
   {
-    method: 'passkey',
-    label: 'Clé d’accès',
-    description: 'Face ID, Touch ID ou code',
-    icon: Fingerprint,
+    action: 'site',
+    label: 'Continuer sur le site',
+    description: 'Valider la connexion dans le navigateur',
+    icon: Globe,
     tint: '#22C55E',
   },
 ];
@@ -55,7 +64,7 @@ export interface SignInViewProps {
   mode: 'onboarding' | 'standalone';
 }
 
-/** Sign-in screen, on the background of the website's own login page. */
+/** Sign-in screen — password/register in-app, Discord / site via browser challenge. */
 export function SignInView({ mode }: SignInViewProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -63,22 +72,29 @@ export function SignInView({ mode }: SignInViewProps) {
   const signIn = useSessionStore((state) => state.signIn);
   const dismiss = useSessionStore((state) => state.dismiss);
 
-  const [pending, setPending] = useState<AuthMethod | null>(null);
+  const [pending, setPending] = useState<UiAction | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
 
-  const start = async (method: AuthMethod) => {
+  const finish = (result: AuthSuccess) => {
+    signIn(result);
+    if (mode === 'standalone') router.back();
+  };
+
+  const startBrowser = async (method: AuthMethod, action: UiAction) => {
     if (pending) return;
-    setPending(method);
+    setPending(action);
     setError(null);
 
     try {
-      signIn(await signInWithBrowser(method));
-      if (mode === 'standalone') router.back();
+      finish(await signInWithBrowser(method));
     } catch (cause) {
       const authError = cause instanceof AuthError ? cause : null;
-      // Giving up is a normal outcome, it does not deserve an error message.
       if (authError?.reason === 'cancelled') {
-        setError('Connexion annulée — rouvre et attends « C’est autorisé » avant de fermer.');
+        setError(
+          'Connexion annulée — rouvre et attends « C’est autorisé » sur le site avant de fermer.'
+        );
         return;
       }
       setError(
@@ -95,6 +111,24 @@ export function SignInView({ mode }: SignInViewProps) {
     }
   };
 
+  const onMethodPress = (action: UiAction) => {
+    if (pending) return;
+    setError(null);
+    if (action === 'password') {
+      setPasswordOpen(true);
+      return;
+    }
+    if (action === 'register') {
+      setRegisterOpen(true);
+      return;
+    }
+    if (action === 'discord') {
+      void startBrowser('discord', 'discord');
+      return;
+    }
+    void startBrowser('site', 'site');
+  };
+
   return (
     <View style={styles.root}>
       <AuthBackdrop />
@@ -108,6 +142,7 @@ export function SignInView({ mode }: SignInViewProps) {
           },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <Reanimated.View
           entering={FadeInDown.duration(520).springify().damping(18)}
@@ -127,18 +162,18 @@ export function SignInView({ mode }: SignInViewProps) {
           {METHODS.map((option, index) => {
             const tint = option.tint ?? colors.primary;
             const MethodIcon = option.icon;
-            const isPending = pending === option.method;
+            const isPending = pending === option.action;
 
             return (
               <Reanimated.View
-                key={option.method}
+                key={option.action}
                 entering={FadeInDown.duration(460)
                   .delay(180 + index * 90)
                   .springify()
                   .damping(18)}
               >
                 <AnimatedPressable
-                  onPress={() => void start(option.method)}
+                  onPress={() => onMethodPress(option.action)}
                   disabled={pending !== null}
                   scale={0.98}
                   accessibilityRole="button"
@@ -158,7 +193,7 @@ export function SignInView({ mode }: SignInViewProps) {
                   <View style={styles.methodText}>
                     <Typography variant="h3">{option.label}</Typography>
                     <Typography variant="caption" color="secondary">
-                      {isPending ? 'En attente de validation…' : option.description}
+                      {isPending ? 'En attente de validation sur le site…' : option.description}
                     </Typography>
                   </View>
                 </AnimatedPressable>
@@ -181,7 +216,7 @@ export function SignInView({ mode }: SignInViewProps) {
         <Reanimated.View entering={FadeInDown.duration(460).delay(460)} style={styles.register}>
           <View style={styles.separator} />
           <AnimatedPressable
-            onPress={() => void start('register')}
+            onPress={() => onMethodPress('register')}
             disabled={pending !== null}
             scale={0.97}
             style={styles.registerButton}
@@ -225,6 +260,19 @@ export function SignInView({ mode }: SignInViewProps) {
           <ChevronLeft size={22} color={colors.text} strokeWidth={2.4} />
         </AnimatedPressable>
       ) : null}
+
+      <PasswordSignInModal
+        visible={passwordOpen}
+        onClose={() => setPasswordOpen(false)}
+        onSuccess={finish}
+        onUseSite={() => void startBrowser('site', 'site')}
+      />
+      <RegisterModal
+        visible={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        onSuccess={finish}
+        onUseSite={() => void startBrowser('register', 'register')}
+      />
     </View>
   );
 }
