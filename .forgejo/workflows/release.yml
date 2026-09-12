@@ -100,6 +100,7 @@ jobs:
                     -e 'registry' \
                     -e 'Docker Hub' \
                     -e 'sdkmanager|pre-cuite|arm64 seul' \
+                    -e 'SideStore' \
                   || true
               )"
               if [ -n "$COMMITS" ]; then
@@ -297,3 +298,59 @@ jobs:
               -F "attachment=@$FILE" > /dev/null
             echo "Uploaded $FILE"
           done
+
+      - name: Publish SideStore source on main
+        env:
+          TOKEN: ${{ secrets.RELEASER_TOKEN }}
+          APP_VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -eu
+          NAME="lbxmb_${APP_VERSION}_ios-unsigned.ipa"
+          cp "$NAME" "/tmp/$NAME"
+
+          NOTES="$(curl -sS "$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases/tags/v$APP_VERSION" \
+            -H "Authorization: token $TOKEN" \
+            | node -e '
+              let d = "";
+              process.stdin.on("data", (c) => (d += c)).on("end", () => {
+                try {
+                  const body = String(JSON.parse(d).body || "");
+                  const line = body
+                    .split(/\r?\n/)
+                    .map((l) => l.trim())
+                    .find((l) => l.startsWith("- "));
+                  process.stdout.write(line ? line.slice(2).trim() : "");
+                } catch {
+                  process.stdout.write("");
+                }
+              });
+            ')"
+          if [ -z "$NOTES" ]; then
+            NOTES="Version $APP_VERSION."
+          fi
+
+          git fetch origin main
+          git checkout -B main origin/main
+
+          node tools/update-sidestore.cjs \
+            --version "$APP_VERSION" \
+            --ipa "/tmp/$NAME" \
+            --notes "$NOTES"
+
+          if git diff --quiet -- store/sidestore.json; then
+            echo "SideStore source already lists $APP_VERSION."
+            exit 0
+          fi
+
+          git add store/sidestore.json
+          GIT_AUTHOR_NAME="LBXMB" GIT_AUTHOR_EMAIL="git@lbxmb.fr" \
+          GIT_COMMITTER_NAME="LBXMB" GIT_COMMITTER_EMAIL="git@lbxmb.fr" \
+          git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "$(cat <<EOF
+          Met à jour SideStore pour la version $APP_VERSION.
+
+          EOF
+          )"
+
+          HOST="${GITHUB_SERVER_URL#https://}"
+          git push "https://oauth2:${TOKEN}@${HOST}/${GITHUB_REPOSITORY}.git" HEAD:main
+          echo "Pushed store/sidestore.json with $APP_VERSION."

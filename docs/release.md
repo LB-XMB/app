@@ -66,6 +66,11 @@ job réessaie pendant vingt minutes avant d’abandonner.
 Chaque binaire arrive accompagné de son empreinte `.sha256`, vérifiée au passage
 pour l’IPA : `lbxmb_1.0.1_android.apk` et `lbxmb_1.0.1_ios-unsigned.ipa`.
 
+Après l’upload de l’IPA, le job `ios` met à jour
+[`store/sidestore.json`](../store/sidestore.json) sur `main` (nouvelle entrée
+en tête de `versions`) pour que SideStore / AltStore voient la release sans
+édition manuelle.
+
 ## Secrets à configurer
 
 | Secret | Effet s’il est absent |
