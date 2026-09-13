@@ -3,14 +3,15 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { AppLockGate } from '@/components/AppLockGate';
+import { BootSplash } from '@/components/brand/BootSplash';
 import { AppProviders } from '@/components/providers/AppProviders';
 import { WhatsNewSheet } from '@/components/WhatsNewSheet';
 import '@/i18n';
 import { useSessionStore } from '@/stores/session';
-import { useSettingsStore } from '@/stores/settings';
+import { readKawaiiLogoPref, useSettingsStore } from '@/stores/settings';
 import { fontAssets, useTheme } from '@/ui/theme';
 
 void SplashScreen.preventAutoHideAsync();
@@ -71,12 +72,17 @@ function RootNavigator() {
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
+  const kawaiiBoot = useRef(readKawaiiLogoPref()).current;
+  const ready = fontsLoaded || !!fontError;
 
   useEffect(() => {
-    if (fontsLoaded || fontError) void SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
+    // Hand off from the baked native splash to the JS splash (same bg).
+    void SplashScreen.hideAsync();
+  }, []);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (!ready) {
+    return <BootSplash kawaii={kawaiiBoot} />;
+  }
 
   return (
     <AppProviders>

@@ -15,6 +15,8 @@
     "language": "Langue",
     "haptics": "Retours haptiques",
     "hapticsHint": "Vibration légère à chaque appui",
+    "kawaiiLogo": "Logo kawaii",
+    "kawaiiLogoHint": "Wordmark service à l’accueil et au démarrage",
     "downloadNotifs": "Notifs téléchargements",
     "downloadNotifsHint": "Alerte locale quand un fichier est prêt",
     "forumInbox": "Alertes forum (inbox)",

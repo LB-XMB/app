@@ -1,5 +1,5 @@
 import { BookOpen, HardDrive, Package, Users, type LucideIcon } from 'lucide-react-native';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Reanimated, { FadeInDown } from 'react-native-reanimated';
 
 import type { HomeStats } from '@/services/api';
@@ -34,9 +34,9 @@ export function StatsGrid({ stats, loading }: StatsGridProps) {
             key={index}
             style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.border }]}
           >
-            <Skeleton width={30} height={30} radius={radius.sm} />
-            <Skeleton width="70%" height={16} />
-            <Skeleton width="50%" height={10} />
+            <Skeleton width={28} height={28} radius={radius.sm} />
+            <Skeleton width="70%" height={VALUE_SLOT} />
+            <Skeleton width="50%" height={LABEL_SLOT} />
           </View>
         ))}
       </View>
@@ -78,12 +78,16 @@ export function StatsGrid({ stats, loading }: StatsGridProps) {
             <View style={[styles.iconWrap, { backgroundColor: `${tile.color}1F` }]}>
               <TileIcon size={15} color={tile.color} strokeWidth={2.4} />
             </View>
-            <Typography variant="h2" numberOfLines={1}>
-              {tile.value}
-            </Typography>
-            <Typography variant="label" color="tertiary" numberOfLines={1}>
-              {tile.label}
-            </Typography>
+            <View style={styles.valueSlot}>
+              <Typography variant="h2" numberOfLines={1} style={styles.valueText}>
+                {tile.value}
+              </Typography>
+            </View>
+            <View style={styles.labelSlot}>
+              <Typography variant="label" color="tertiary" numberOfLines={1}>
+                {tile.label}
+              </Typography>
+            </View>
           </Reanimated.View>
         );
       })}
@@ -91,15 +95,19 @@ export function StatsGrid({ stats, loading }: StatsGridProps) {
   );
 }
 
+/** Match Typography h2 / label metrics so every tile shares the same baselines. */
+const VALUE_SLOT = 28;
+const LABEL_SLOT = 14;
+
 const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    justifyContent: 'space-between',
+    rowGap: spacing.md,
   },
   tile: {
-    flexGrow: 1,
-    flexBasis: '44%',
+    width: '48.5%',
     gap: spacing.xs,
     padding: spacing.md,
     borderRadius: radius.lg,
@@ -113,6 +121,18 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+  },
+  valueSlot: {
+    height: VALUE_SLOT,
+    justifyContent: 'center',
+  },
+  valueText: {
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+    fontVariant: ['tabular-nums'],
+    lineHeight: VALUE_SLOT,
+  },
+  labelSlot: {
+    height: LABEL_SLOT,
+    justifyContent: 'center',
   },
 });

@@ -9,6 +9,7 @@ import {
   Lock,
   Moon,
   Smartphone,
+  Sparkles,
   Sun,
   Trash2,
   Vibrate,
@@ -68,6 +69,8 @@ export default function SettingsScreen() {
   const setAppLockEnabled = useSettingsStore((state) => state.setAppLockEnabled);
   const language = useSettingsStore((state) => state.language);
   const setLanguage = useSettingsStore((state) => state.setLanguage);
+  const kawaiiLogo = useSettingsStore((state) => state.kawaiiLogo);
+  const setKawaiiLogo = useSettingsStore((state) => state.setKawaiiLogo);
 
   const [cacheSize, setCacheSize] = useState(() => downloadedBytes());
   const [lockAvailable, setLockAvailable] = useState(false);
@@ -218,6 +221,19 @@ export default function SettingsScreen() {
             })}
           </View>
           <List>
+            <List.Item
+              title={t('settings.kawaiiLogo')}
+              subtitle={t('settings.kawaiiLogoHint')}
+              leading={<IconBadge icon={Sparkles} color={colors.accent} size={30} />}
+              trailing={
+                <Switch
+                  value={kawaiiLogo}
+                  onValueChange={setKawaiiLogo}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                  thumbColor={colors.onPrimary}
+                />
+              }
+            />
             <List.Item
               title={t('settings.haptics')}
               subtitle={t('settings.hapticsHint')}

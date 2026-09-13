@@ -15,6 +15,7 @@ import { useHome } from '@/hooks/useHome';
 import { useNewsHighlights } from '@/hooks/useNews';
 import { useResourcePage } from '@/hooks/useResources';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
+import { useSettingsStore } from '@/stores/settings';
 import {
   ErrorState,
   Screen,
@@ -26,6 +27,7 @@ import { screenPadding, spacing, tabBarHeight, tabBarInset } from '@/ui/theme';
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const kawaiiLogo = useSettingsStore((state) => state.kawaiiLogo);
   useScreenTracking('/');
 
   const home = useHome();
@@ -76,13 +78,15 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
       >
         <View style={styles.header}>
-          <Logo width={52} style={styles.logo} />
-          <View style={styles.headerText}>
-            <Typography variant="h1">LB’XMB</Typography>
-            <Typography variant="caption" color="secondary">
-              Ressources et guides de modding console
-            </Typography>
-          </View>
+          <Logo width={kawaiiLogo ? 168 : 52} style={styles.logo} />
+          {kawaiiLogo ? null : (
+            <View style={styles.headerText}>
+              <Typography variant="h1">LB’XMB</Typography>
+              <Typography variant="caption" color="secondary">
+                Ressources et guides de modding console
+              </Typography>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>

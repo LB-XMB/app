@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { zustandStorage } from './storage';
+import { storage, zustandStorage } from './storage';
 
 export type ThemePreference = 'auto' | 'light' | 'dark';
 
@@ -30,6 +30,8 @@ interface SettingsState {
   language: 'system' | 'fr' | 'en';
   /** Last app version for which the changelog sheet was shown. */
   lastSeenAppVersion: string | null;
+  /** Accueil wordmark: kawaii-service-logo instead of the default. */
+  kawaiiLogo: boolean;
   setTheme: (theme: ThemePreference) => void;
   setConsent: (consent: Exclude<ConsentLevel, 'unset'>) => void;
   setCatalogueLayout: (layout: CatalogueLayout) => void;
@@ -39,6 +41,7 @@ interface SettingsState {
   setAppLockEnabled: (enabled: boolean) => void;
   setLanguage: (language: 'system' | 'fr' | 'en') => void;
   setLastSeenAppVersion: (version: string) => void;
+  setKawaiiLogo: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -55,6 +58,7 @@ export const useSettingsStore = create<SettingsState>()(
       appLockEnabled: false,
       language: 'system',
       lastSeenAppVersion: null,
+      kawaiiLogo: false,
       setTheme: (theme) => set({ theme }),
       setConsent: (consent) => set({ consent, consentDate: new Date().toISOString() }),
       setCatalogueLayout: (catalogueLayout) => set({ catalogueLayout }),
@@ -64,6 +68,7 @@ export const useSettingsStore = create<SettingsState>()(
       setAppLockEnabled: (appLockEnabled) => set({ appLockEnabled }),
       setLanguage: (language) => set({ language }),
       setLastSeenAppVersion: (lastSeenAppVersion) => set({ lastSeenAppVersion }),
+      setKawaiiLogo: (kawaiiLogo) => set({ kawaiiLogo }),
     }),
     {
       name: 'lbxmb.settings',
@@ -75,4 +80,19 @@ export const useSettingsStore = create<SettingsState>()(
 /** True once the user has answered the privacy screen. */
 export function hasAnsweredConsent(consent: ConsentLevel): boolean {
   return consent !== 'unset';
+}
+
+/**
+ * Sync read of the kawaii logo preference before zustand rehydrates.
+ * Used by the JS boot splash so the correct mark shows on cold start.
+ */
+export function readKawaiiLogoPref(): boolean {
+  try {
+    const raw = storage.getString('lbxmb.settings');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { state?: { kawaiiLogo?: boolean } };
+    return parsed.state?.kawaiiLogo === true;
+  } catch {
+    return false;
+  }
 }

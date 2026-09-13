@@ -1,3 +1,8 @@
+## 1.0.9
+
+- Toggle logo kawaii (accueil + splash au démarrage)
+- Alignement des chiffres sur la grille de stats Accueil
+
 ## 1.0.8
 
 - File d’attente des téléchargements avec progression et retry
