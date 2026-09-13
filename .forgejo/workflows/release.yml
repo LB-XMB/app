@@ -257,11 +257,14 @@ jobs:
           done
 
   # The IPA is built by .github/workflows/ios.yml on a macOS runner and lands on
-  # the GitHub release. This job brings it back here. It waits for the Android
-  # build first, which gives the macOS job the fifteen minutes it needs.
+  # the GitHub release. This job brings it back here when available. Android
+  # alone is enough for a successful Forgejo release — do not hard-fail if the
+  # GitHub mirror is down or intentionally not pushed.
   ios:
     needs: [release, android]
     runs-on: docker
+    # Soft-fail: missing IPA must not red the whole Release workflow.
+    continue-on-error: true
     container:
       image: node:22-bookworm
     env:
@@ -269,14 +272,17 @@ jobs:
       MIRROR: https://github.com/LB-XMB/app
     steps:
       - name: Fetch the IPA from the GitHub mirror
+        id: fetch
         run: |
           set -eu
           NAME="lbxmb_${APP_VERSION}_ios-unsigned.ipa"
           BASE="$MIRROR/releases/download/v$APP_VERSION"
+          echo "available=no" >> "$GITHUB_OUTPUT"
 
           for FILE in "$NAME" "$NAME.sha256"; do
             DOWNLOADED=no
-            for attempt in $(seq 1 40); do
+            # ~10 min max — Android is already published; no need to block 20 min.
+            for attempt in $(seq 1 20); do
               CODE="$(curl -sL --max-time 600 -o "$FILE" -w '%{http_code}' "$BASE/$FILE")"
               if [ "$CODE" = "200" ]; then
                 DOWNLOADED=yes
@@ -288,15 +294,17 @@ jobs:
               sleep 30
             done
             if [ "$DOWNLOADED" = "no" ]; then
-              echo "::error::The macOS build never published $FILE."
-              exit 1
+              echo "::warning::IPA not on the GitHub mirror — Android release stands alone."
+              exit 0
             fi
           done
 
           sha256sum -c "$NAME.sha256"
           ls -lh "$NAME"
+          echo "available=yes" >> "$GITHUB_OUTPUT"
 
       - name: Upload the IPA to the release
+        if: steps.fetch.outputs.available == 'yes'
         env:
           TOKEN: ${{ secrets.RELEASER_TOKEN }}
         run: |
@@ -313,6 +321,7 @@ jobs:
           cp "$NAME" "/tmp/$NAME"
 
       - name: Checkout main for SideStore
+        if: steps.fetch.outputs.available == 'yes'
         uses: actions/checkout@v4
         with:
           ref: main
@@ -320,6 +329,7 @@ jobs:
           token: ${{ secrets.RELEASER_TOKEN }}
 
       - name: Publish SideStore source on main
+        if: steps.fetch.outputs.available == 'yes'
         env:
           TOKEN: ${{ secrets.RELEASER_TOKEN }}
           APP_VERSION: ${{ needs.release.outputs.version }}
@@ -367,13 +377,11 @@ jobs:
 
           git add store/sidestore.json
           # CI bot identity — no Cursor trailer on automated SideStore bumps.
+          # Keep the -m string on one YAML-indented line: a bare HEREDOC body
+          # at column 0 terminates the `run: |` block and breaks the workflow.
           GIT_AUTHOR_NAME="Forgejo Actions" GIT_AUTHOR_EMAIL="actions@git.lbxmb.fr" \
           GIT_COMMITTER_NAME="Forgejo Actions" GIT_COMMITTER_EMAIL="actions@git.lbxmb.fr" \
-          git commit -m "$(cat <<EOF
-Met à jour SideStore pour la version $APP_VERSION.
-
-EOF
-)"
+          git commit -m "Met à jour SideStore pour la version ${APP_VERSION}."
 
           HOST="${GITHUB_SERVER_URL#https://}"
           git push "https://oauth2:${TOKEN}@${HOST}/${GITHUB_REPOSITORY}.git" HEAD:main
