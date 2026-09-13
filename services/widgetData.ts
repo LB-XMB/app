@@ -18,7 +18,7 @@ export interface WidgetPayloads {
   fetchedAt: string;
 }
 
-/** Read-only public API payloads for future home-screen widgets. */
+/** Read-only public API payloads for Android home-screen widgets (+ in-app preview). */
 export async function fetchWidgetPayloads(signal?: AbortSignal): Promise<WidgetPayloads> {
   const [home, stats] = await Promise.all([fetchHome(signal), fetchHomeStats(signal)]);
   return {

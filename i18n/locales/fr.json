@@ -71,7 +71,14 @@
   },
   "widgets": {
     "title": "Widgets",
-    "stub": "Bientôt — aperçu des données uniquement (pas encore sur l’écran d’accueil)"
+    "androidHint": "Ajoute Stats communauté ou Populaires depuis le sélecteur Android",
+    "iosHint": "Widgets iOS reportés — aperçu des données uniquement",
+    "statsTitle": "Stats communauté",
+    "popularTitle": "Populaires",
+    "resources": "ressources",
+    "guides": "guides",
+    "members": "membres",
+    "updated": "Mis à jour {{date}}"
   },
   "lock": {
     "title": "Application verrouillée",

@@ -71,7 +71,7 @@ export default function AboutScreen() {
             ) : null}
             <List.Item
               title="Widgets"
-              subtitle="Bientôt — aperçu données (pas encore sur l’écran d’accueil)"
+              subtitle="Android : Stats & Populaires · iOS bientôt"
               leading={<IconBadge icon={LayoutGrid} color={colors.accent} size={30} />}
               onPress={() => router.push('/widgets')}
             />

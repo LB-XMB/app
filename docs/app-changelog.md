@@ -1,3 +1,8 @@
+## 1.0.11
+
+- Widgets Android : Stats communauté et Populaires (sélecteur d’écran d’accueil)
+- Refresh depuis l’écran Widgets / ouverture de l’app
+
 ## 1.0.10
 
 - Correctif CI SideStore (checkout avant push du source JSON)

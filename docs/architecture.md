@@ -53,7 +53,7 @@ app/
 ├── notifications.tsx        Inbox forum (opt-in)
 ├── profil/[id].tsx          Profil public
 ├── forum/… | actualites.tsx
-├── parametres.tsx | a-propos.tsx | widgets.tsx (aperçu / bientôt)
+├── parametres.tsx | a-propos.tsx | widgets.tsx (aperçu + sync Android)
 └── +not-found.tsx
 ```
 

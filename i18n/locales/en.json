@@ -71,7 +71,14 @@
   },
   "widgets": {
     "title": "Widgets",
-    "stub": "Coming soon — data preview only (not on the home screen yet)"
+    "androidHint": "Add Community stats or Popular from the Android widget picker",
+    "iosHint": "iOS widgets postponed — data preview only",
+    "statsTitle": "Community stats",
+    "popularTitle": "Popular",
+    "resources": "resources",
+    "guides": "guides",
+    "members": "members",
+    "updated": "Updated {{date}}"
   },
   "lock": {
     "title": "App locked",

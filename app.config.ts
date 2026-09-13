@@ -166,6 +166,35 @@ const config: ExpoConfig = {
       },
     ],
     'expo-video',
+    [
+      'react-native-android-widget',
+      {
+        widgets: [
+          {
+            name: 'Stats',
+            label: 'Stats communauté',
+            description: 'Ressources, guides et membres LB’XMB',
+            minWidth: '180dp',
+            minHeight: '110dp',
+            targetCellWidth: 4,
+            targetCellHeight: 2,
+            resizeMode: 'horizontal|vertical',
+            updatePeriodMillis: 1_800_000,
+          },
+          {
+            name: 'Popular',
+            label: 'Populaires',
+            description: 'Ressources populaires LB’XMB',
+            minWidth: '180dp',
+            minHeight: '110dp',
+            targetCellWidth: 4,
+            targetCellHeight: 2,
+            resizeMode: 'horizontal|vertical',
+            updatePeriodMillis: 1_800_000,
+          },
+        ],
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

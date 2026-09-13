@@ -2,15 +2,18 @@
 
 ## État actuel (Expo SDK 57)
 
-- **Android** : pas de support officiel via `expo-widgets`.
-- **iOS** : `expo-widgets` existe mais présente une régression connue (`@expo/ui` /
-  bundle widget) qui affiche une erreur de layout. Intégration **reportée**.
+- **Android** : widgets natifs via [`react-native-android-widget`](https://saleksovski.github.io/react-native-android-widget/)
+  — **Stats communauté** et **Populaires**. Config plugin dans `app.config.ts`,
+  rendu dans `widgets/`, tâche enregistrée depuis `index.js`.
+- **iOS** : `expo-widgets` reporté (régression layout `@expo/ui` sur SDK 57).
 
-L’app expose déjà les données via `services/widgetData.ts` (`/api/home` +
-`/api/stats/home`) et un aperçu in-app (écran Widgets depuis À propos).
+Les données viennent de `services/widgetData.ts` (`/api/home` + `/api/stats/home`).
+L’écran Widgets (À propos) affiche l’aperçu et pousse une MAJ des widgets Android
+installés.
 
-## Quand reprendre
+## Ajout / MAJ
 
-1. Vérifier que `expo-widgets` rend correctement sur un build SDK 57/58.
-2. Ajouter le plugin + deux widgets : **Populaires** et **Stats communauté**.
-3. Refresh lent (timeline) — pas de FTP / forum / compte dans les widgets.
+1. Long-press écran d’accueil → widgets → chercher **LB'XMB**.
+2. Ouvrir l’app (ou l’écran Widgets) pour forcer un refresh hors période système
+   (minimum 30 min via `updatePeriodMillis`).
+3. Tap d’une ligne Populaires → ouvre l’URL lbxmb.fr correspondante.

@@ -1,5 +1,10 @@
 /** Keep in sync with `docs/app-changelog.md`. */
-export const APP_CHANGELOG_MD = `## 1.0.10
+export const APP_CHANGELOG_MD = `## 1.0.11
+
+- Widgets Android : Stats communauté et Populaires (sélecteur d’écran d’accueil)
+- Refresh depuis l’écran Widgets / ouverture de l’app
+
+## 1.0.10
 
 - Correctif CI SideStore (checkout avant push du source JSON)
 - Queues DL/FTP : reprise après kill (plus de jobs \`running\` fantômes)
