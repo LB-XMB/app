@@ -366,13 +366,14 @@ jobs:
           fi
 
           git add store/sidestore.json
-          GIT_AUTHOR_NAME="LBXMB" GIT_AUTHOR_EMAIL="git@lbxmb.fr" \
-          GIT_COMMITTER_NAME="LBXMB" GIT_COMMITTER_EMAIL="git@lbxmb.fr" \
-          git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "$(cat <<EOF
-          Met à jour SideStore pour la version $APP_VERSION.
+          # CI bot identity — no Cursor trailer on automated SideStore bumps.
+          GIT_AUTHOR_NAME="Forgejo Actions" GIT_AUTHOR_EMAIL="actions@git.lbxmb.fr" \
+          GIT_COMMITTER_NAME="Forgejo Actions" GIT_COMMITTER_EMAIL="actions@git.lbxmb.fr" \
+          git commit -m "$(cat <<EOF
+Met à jour SideStore pour la version $APP_VERSION.
 
-          EOF
-          )"
+EOF
+)"
 
           HOST="${GITHUB_SERVER_URL#https://}"
           git push "https://oauth2:${TOKEN}@${HOST}/${GITHUB_REPOSITORY}.git" HEAD:main
