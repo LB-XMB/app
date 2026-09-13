@@ -1,5 +1,12 @@
 /** Keep in sync with `docs/app-changelog.md`. */
-export const APP_CHANGELOG_MD = `## 1.0.9
+export const APP_CHANGELOG_MD = `## 1.0.10
+
+- Correctif CI SideStore (checkout avant push du source JSON)
+- Queues DL/FTP : reprise après kill (plus de jobs \`running\` fantômes)
+- Accueil kawaii : sous-titre « Ressources et guides… » à droite du logo
+- Docs architecture / QA auth / Cloudflare ; tests Vitest normalize + queues
+
+## 1.0.9
 
 - Toggle logo kawaii (accueil + splash au démarrage)
 - Alignement des chiffres sur la grille de stats Accueil
