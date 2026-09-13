@@ -65,3 +65,14 @@ Ne pas skipper tout `/api/*` ni tout le site sur cet UA : ce n’est pas un secr
 
 Après déploiement de la règle, tester depuis un build natif : `POST /api/auth/qr/create`
 et `POST /api/auth/sign-in/username` doivent répondre sans 403 Cloudflare.
+
+## Smoke curl (post-changement WAF)
+
+```bash
+UA='LBXMB-App/1.0.9 (Android)'
+curl -sS -o /dev/null -w 'me=%{http_code}\n' \
+  -H "User-Agent: $UA" -H 'X-LBXMB-Client: app' -H 'Origin: https://lbxmb.fr' \
+  'https://lbxmb.fr/api/auth/me'
+```
+
+Checklist complète : `docs/qa-auth.md`.

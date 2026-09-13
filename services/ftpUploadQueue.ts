@@ -2,6 +2,7 @@ import { File } from 'expo-file-system';
 
 import { FtpClient } from '@/services/ftp';
 import {
+  recoverFtpUploadQueueAfterCrash,
   resolveFtpPassword,
   useFtpStore,
 } from '@/stores/ftp';
@@ -14,7 +15,9 @@ export async function pumpFtpUploadQueue(): Promise<void> {
   try {
     for (;;) {
       const state = useFtpStore.getState();
-      if (state.uploadQueue.some((job) => job.status === 'running')) return;
+      if (state.uploadQueue.some((job) => job.status === 'running')) {
+        recoverFtpUploadQueueAfterCrash();
+      }
 
       const next = [...state.uploadQueue].reverse().find((job) => job.status === 'pending');
       if (!next) return;

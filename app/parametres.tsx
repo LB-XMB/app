@@ -254,11 +254,9 @@ export default function SettingsScreen() {
           <ListSectionTitle>{t('settings.privacy')}</ListSectionTitle>
           <List>
             <List.Item
-              title="Statistiques d’usage"
+              title={t('settings.usageStats')}
               subtitle={
-                consent === 'full'
-                  ? 'Activées — mesure anonyme via Umami'
-                  : 'Désactivées — rien ne quitte l’appareil'
+                consent === 'full' ? t('settings.usageStatsOn') : t('settings.usageStatsOff')
               }
               leading={
                 <IconBadge
@@ -277,9 +275,11 @@ export default function SettingsScreen() {
               }
             />
             <List.Item
-              title="Politique de confidentialité"
+              title={t('settings.privacyPolicy')}
               subtitle={
-                consentDate ? `Choix enregistré le ${formatDate(consentDate)}` : undefined
+                consentDate
+                  ? t('settings.privacyChoiceOn', { date: formatDate(consentDate) })
+                  : undefined
               }
               leading={<IconBadge icon={FileLock2} color={colors.textSecondary} size={30} />}
               trailing={
@@ -295,11 +295,11 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.group}>
-          <ListSectionTitle>Stockage</ListSectionTitle>
+          <ListSectionTitle>{t('settings.storage')}</ListSectionTitle>
           <List>
             <List.Item
-              title="Fichiers téléchargés"
-              subtitle={cacheSize > 0 ? formatBytes(cacheSize) : 'Rien à supprimer'}
+              title={t('settings.downloadedFiles')}
+              subtitle={cacheSize > 0 ? formatBytes(cacheSize) : t('settings.downloadedEmpty')}
               leading={<IconBadge icon={HardDrive} color={colors.warning} size={30} />}
               trailing={
                 cacheSize > 0 ? (

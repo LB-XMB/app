@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { AppLockGate } from '@/components/AppLockGate';
 import { BootSplash } from '@/components/brand/BootSplash';
@@ -15,6 +15,9 @@ import { readKawaiiLogoPref, useSettingsStore } from '@/stores/settings';
 import { fontAssets, useTheme } from '@/ui/theme';
 
 void SplashScreen.preventAutoHideAsync();
+
+/** Keep the JS splash visible long enough to actually see the kawaii mark. */
+const BOOT_SPLASH_MIN_MS = 700;
 
 function RootNavigator() {
   const { colors, scheme } = useTheme();
@@ -73,14 +76,26 @@ function RootNavigator() {
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
   const kawaiiBoot = useRef(readKawaiiLogoPref()).current;
-  const ready = fontsLoaded || !!fontError;
+  const bootStartedAt = useRef(Date.now());
+  const [bootDone, setBootDone] = useState(false);
 
   useEffect(() => {
     // Hand off from the baked native splash to the JS splash (same bg).
     void SplashScreen.hideAsync();
   }, []);
 
-  if (!ready) {
+  useEffect(() => {
+    if (!fontsLoaded && !fontError) return;
+
+    const elapsed = Date.now() - bootStartedAt.current;
+    // Always show a short branded splash when kawaii is on; otherwise exit ASAP.
+    const minMs = kawaiiBoot ? BOOT_SPLASH_MIN_MS : 0;
+    const wait = Math.max(0, minMs - elapsed);
+    const timer = setTimeout(() => setBootDone(true), wait);
+    return () => clearTimeout(timer);
+  }, [fontsLoaded, fontError, kawaiiBoot]);
+
+  if (!bootDone) {
     return <BootSplash kawaii={kawaiiBoot} />;
   }
 

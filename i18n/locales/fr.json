@@ -13,6 +13,14 @@
     "privacy": "Confidentialité",
     "security": "Sécurité",
     "language": "Langue",
+    "storage": "Stockage",
+    "usageStats": "Statistiques d’usage",
+    "usageStatsOn": "Activées — mesure anonyme via Umami",
+    "usageStatsOff": "Désactivées — rien ne quitte l’appareil",
+    "privacyPolicy": "Politique de confidentialité",
+    "privacyChoiceOn": "Choix enregistré le {{date}}",
+    "downloadedFiles": "Fichiers téléchargés",
+    "downloadedEmpty": "Rien à supprimer",
     "haptics": "Retours haptiques",
     "hapticsHint": "Vibration légère à chaque appui",
     "kawaiiLogo": "Logo kawaii",
@@ -63,7 +71,7 @@
   },
   "widgets": {
     "title": "Widgets",
-    "stub": "Aperçu des données widgets (écran d’accueil natif reporté)"
+    "stub": "Bientôt — aperçu des données uniquement (pas encore sur l’écran d’accueil)"
   },
   "lock": {
     "title": "Application verrouillée",

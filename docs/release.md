@@ -66,10 +66,11 @@ job réessaie pendant vingt minutes avant d’abandonner.
 Chaque binaire arrive accompagné de son empreinte `.sha256`, vérifiée au passage
 pour l’IPA : `lbxmb_1.0.1_android.apk` et `lbxmb_1.0.1_ios-unsigned.ipa`.
 
-Après l’upload de l’IPA, le job `ios` met à jour
-[`store/sidestore.json`](../store/sidestore.json) sur `main` (nouvelle entrée
-en tête de `versions`) pour que SideStore / AltStore voient la release sans
-édition manuelle.
+Après l’upload de l’IPA, le job `ios` **checkout `main`**, met à jour
+[`store/sidestore.json`](../store/sidestore.json) (nouvelle entrée en tête de
+`versions`) et pousse sur `main` pour que SideStore / AltStore voient la release
+sans édition manuelle. L’IPA est copié sous `/tmp` avant le checkout pour ne pas
+être écrasé.
 
 ## Secrets à configurer
 
@@ -161,6 +162,15 @@ npx eas login
 npx eas credentials        # certificat de distribution + profil de provisioning
 npx eas build --platform ios --profile production
 ```
+
+## Checklist EAS production-store (amorce)
+
+Avant un premier AAB Play :
+
+1. `npx eas login` + credentials Android (`eas credentials`)
+2. Keystore **unique** partagé CI sideload / EAS (documenter qui détient le `.jks`)
+3. `npx eas build --platform android --profile production-store`
+4. Remplir Data safety + captures (section « Avant une première soumission »)
 
 ## APK ou AAB
 

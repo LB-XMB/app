@@ -44,6 +44,8 @@ interface SettingsState {
   setKawaiiLogo: (enabled: boolean) => void;
 }
 
+const KAWAII_BOOT_KEY = 'lbxmb.kawaiiLogo';
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
@@ -68,11 +70,26 @@ export const useSettingsStore = create<SettingsState>()(
       setAppLockEnabled: (appLockEnabled) => set({ appLockEnabled }),
       setLanguage: (language) => set({ language }),
       setLastSeenAppVersion: (lastSeenAppVersion) => set({ lastSeenAppVersion }),
-      setKawaiiLogo: (kawaiiLogo) => set({ kawaiiLogo }),
+      setKawaiiLogo: (kawaiiLogo) => {
+        try {
+          storage.set(KAWAII_BOOT_KEY, kawaiiLogo);
+        } catch {
+          /* ignore */
+        }
+        set({ kawaiiLogo });
+      },
     }),
     {
       name: 'lbxmb.settings',
       storage: createJSONStorage(() => zustandStorage),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        try {
+          storage.set(KAWAII_BOOT_KEY, state.kawaiiLogo);
+        } catch {
+          /* ignore */
+        }
+      },
     }
   )
 );
@@ -83,11 +100,13 @@ export function hasAnsweredConsent(consent: ConsentLevel): boolean {
 }
 
 /**
- * Sync read of the kawaii logo preference before zustand rehydrates.
- * Used by the JS boot splash so the correct mark shows on cold start.
+ * Sync read for the JS boot splash (before zustand rehydrates).
+ * Prefers a dedicated MMKV boolean, falls back to the persisted settings blob.
  */
 export function readKawaiiLogoPref(): boolean {
   try {
+    const flag = storage.getBoolean(KAWAII_BOOT_KEY);
+    if (flag !== undefined) return flag;
     const raw = storage.getString('lbxmb.settings');
     if (!raw) return false;
     const parsed = JSON.parse(raw) as { state?: { kawaiiLogo?: boolean } };

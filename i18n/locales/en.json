@@ -13,6 +13,14 @@
     "privacy": "Privacy",
     "security": "Security",
     "language": "Language",
+    "storage": "Storage",
+    "usageStats": "Usage statistics",
+    "usageStatsOn": "On — anonymous Umami analytics",
+    "usageStatsOff": "Off — nothing leaves the device",
+    "privacyPolicy": "Privacy policy",
+    "privacyChoiceOn": "Choice saved on {{date}}",
+    "downloadedFiles": "Downloaded files",
+    "downloadedEmpty": "Nothing to delete",
     "haptics": "Haptics",
     "hapticsHint": "Light vibration on tap",
     "kawaiiLogo": "Kawaii logo",
@@ -63,7 +71,7 @@
   },
   "widgets": {
     "title": "Widgets",
-    "stub": "Widget data preview (native home-screen widgets deferred)"
+    "stub": "Coming soon — data preview only (not on the home screen yet)"
   },
   "lock": {
     "title": "App locked",

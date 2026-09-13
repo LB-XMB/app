@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { TransferProtocol } from '@/services/ftp';
 
+import { sanitizeRunningJobs } from '@/services/queueSanitize';
 import { zustandStorage } from './storage';
 
 export interface FtpProfile {
@@ -184,9 +185,7 @@ export const useFtpStore = create<FtpState>()(
       partialize: (state) => ({
         profiles: state.profiles,
         activeProfileId: state.activeProfileId,
-        uploadQueue: state.uploadQueue.map((job) =>
-          job.status === 'running' ? { ...job, status: 'pending' as const } : job
-        ),
+        uploadQueue: sanitizeRunningJobs(state.uploadQueue),
       }),
       merge: (persisted, current) => {
         const raw = persisted as {
@@ -236,13 +235,26 @@ export const useFtpStore = create<FtpState>()(
           ...current,
           profiles,
           activeProfileId,
-          uploadQueue: raw?.uploadQueue ?? [],
+          uploadQueue: sanitizeRunningJobs(raw?.uploadQueue ?? [], { error: null }),
           passwordDrafts: {},
         };
       },
     }
   )
 );
+
+/** Mark orphaned FTP uploads as pending after a process kill. */
+export function recoverFtpUploadQueueAfterCrash(): number {
+  const { uploadQueue } = useFtpStore.getState();
+  const stuck = uploadQueue.filter((job) => job.status === 'running');
+  if (stuck.length === 0) return 0;
+  useFtpStore.setState({
+    uploadQueue: uploadQueue.map((job) =>
+      job.status === 'running' ? { ...job, status: 'pending' as const, error: null } : job
+    ),
+  });
+  return stuck.length;
+}
 
 export function useActiveFtpProfile(): FtpProfile | null {
   return useFtpStore((state) => {

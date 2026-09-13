@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { DownloadFile } from '@/services/api';
 
+import { sanitizeRunningJobs } from '@/services/queueSanitize';
 import { zustandStorage } from './storage';
 
 export type DownloadJobStatus = 'pending' | 'running' | 'done' | 'error';
@@ -104,12 +105,37 @@ export const useDownloadQueueStore = create<DownloadQueueState>()(
       storage: createJSONStorage(() => zustandStorage),
       partialize: (state) => ({
         // Drop in-flight progress across restarts; pending/error/done stay.
-        jobs: state.jobs.map((job) =>
-          job.status === 'running'
-            ? { ...job, status: 'pending' as const, progress: null }
-            : job
-        ),
+        jobs: sanitizeRunningJobs(state.jobs, { progress: null }),
       }),
+      merge: (persisted, current) => {
+        const raw = persisted as { jobs?: DownloadJob[] } | null;
+        const jobs = sanitizeRunningJobs(raw?.jobs ?? current.jobs, {
+          progress: null,
+          error: null,
+        });
+        return { ...current, jobs };
+      },
     }
   )
 );
+
+/** Mark orphaned `running` jobs as pending after a process kill. */
+export function recoverDownloadQueueAfterCrash(): number {
+  const { jobs } = useDownloadQueueStore.getState();
+  const n = jobs.filter((job) => job.status === 'running').length;
+  if (n === 0) return 0;
+  useDownloadQueueStore.setState({
+    jobs: jobs.map((job) =>
+      job.status === 'running'
+        ? {
+            ...job,
+            status: 'pending' as const,
+            progress: null,
+            error: null,
+            updatedAt: nowIso(),
+          }
+        : job
+    ),
+  });
+  return n;
+}

@@ -4,7 +4,11 @@ import {
   ensureNotificationPermission,
   notifyDownloadDone,
 } from '@/services/notifications';
-import { useDownloadQueueStore, type DownloadJobResource } from '@/stores/downloadQueue';
+import {
+  recoverDownloadQueueAfterCrash,
+  useDownloadQueueStore,
+  type DownloadJobResource,
+} from '@/stores/downloadQueue';
 import { useSettingsStore } from '@/stores/settings';
 
 let pumping = false;
@@ -20,7 +24,10 @@ export async function pumpDownloadQueue(): Promise<void> {
   try {
     for (;;) {
       const store = useDownloadQueueStore.getState();
-      if (store.jobs.some((job) => job.status === 'running')) return;
+      // Orphaned `running` after a kill would block the queue forever.
+      if (store.jobs.some((job) => job.status === 'running')) {
+        recoverDownloadQueueAfterCrash();
+      }
 
       const next = [...store.jobs].reverse().find((job) => job.status === 'pending');
       if (!next) return;

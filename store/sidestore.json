@@ -14,6 +14,30 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.0.9",
+          "date": "2026-09-13T09:59:00Z",
+          "localizedDescription": "Ajoute le logo kawaii (accueil + splash) et aligne les stats Accueil.",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.9/lbxmb_1.0.9_ios-unsigned.ipa",
+          "size": 20198148,
+          "minOSVersion": "16.4"
+        },
+        {
+          "version": "1.0.8",
+          "date": "2026-09-12T21:26:00Z",
+          "localizedDescription": "Corrige le bundle Android Metro (chemins buffer/util et stub SFTP).",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.8/lbxmb_1.0.8_ios-unsigned.ipa",
+          "size": 20003607,
+          "minOSVersion": "16.4"
+        },
+        {
+          "version": "1.0.7",
+          "date": "2026-09-12T18:00:00Z",
+          "localizedDescription": "Évite un faux succès release quand l’API Forgejo ne renvoie pas d’id.",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.7/lbxmb_1.0.7_ios-unsigned.ipa",
+          "size": 19369502,
+          "minOSVersion": "16.4"
+        },
+        {
           "version": "1.0.6",
           "date": "2026-09-12T12:42:53Z",
           "localizedDescription": "Login QR : openBrowserAsync, Origin/credentials pour éviter le 403 Better Auth, User-Agent LBXMB-App.",

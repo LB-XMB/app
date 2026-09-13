@@ -12,6 +12,8 @@ import {
 } from '@/services/queryPersist';
 import { ThemeProvider } from '@/ui/theme';
 
+import { QueueBootstrap } from './QueueBootstrap';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -42,7 +44,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
             },
           }}
         >
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider>
+            <QueueBootstrap />
+            {children}
+          </ThemeProvider>
         </PersistQueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

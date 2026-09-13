@@ -309,6 +309,15 @@ jobs:
               -F "attachment=@$FILE" > /dev/null
             echo "Uploaded $FILE"
           done
+          # Survive the following checkout (workspace is replaced).
+          cp "$NAME" "/tmp/$NAME"
+
+      - name: Checkout main for SideStore
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASER_TOKEN }}
 
       - name: Publish SideStore source on main
         env:
@@ -317,7 +326,10 @@ jobs:
         run: |
           set -eu
           NAME="lbxmb_${APP_VERSION}_ios-unsigned.ipa"
-          cp "$NAME" "/tmp/$NAME"
+          if [ ! -f "/tmp/$NAME" ]; then
+            echo "::error::IPA missing at /tmp/$NAME after checkout."
+            exit 1
+          fi
 
           NOTES="$(curl -sS "$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases/tags/v$APP_VERSION" \
             -H "Authorization: token $TOKEN" \

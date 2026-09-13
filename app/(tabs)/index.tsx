@@ -78,15 +78,13 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
       >
         <View style={styles.header}>
-          <Logo width={kawaiiLogo ? 168 : 52} style={styles.logo} />
-          {kawaiiLogo ? null : (
-            <View style={styles.headerText}>
-              <Typography variant="h1">LB’XMB</Typography>
-              <Typography variant="caption" color="secondary">
-                Ressources et guides de modding console
-              </Typography>
-            </View>
-          )}
+          <Logo width={kawaiiLogo ? 140 : 52} style={styles.logo} />
+          <View style={styles.headerText}>
+            {kawaiiLogo ? null : <Typography variant="h1">LB’XMB</Typography>}
+            <Typography variant="caption" color="secondary">
+              Ressources et guides de modding console
+            </Typography>
+          </View>
         </View>
 
         <View style={styles.section}>
