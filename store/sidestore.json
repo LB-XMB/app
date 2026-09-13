@@ -14,6 +14,14 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.0.11",
+          "date": "2026-09-13T14:16:09Z",
+          "localizedDescription": "Ajoute les widgets Android Stats et Populaires pour la 1.0.11.",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.11/lbxmb_1.0.11_ios-unsigned.ipa",
+          "size": 20219450,
+          "minOSVersion": "16.4"
+        },
+        {
           "version": "1.0.10",
           "date": "2026-09-13T11:02:34Z",
           "localizedDescription": "Prépare la release 1.0.10 (P-Stabilize).",
