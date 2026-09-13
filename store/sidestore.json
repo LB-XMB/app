@@ -14,6 +14,14 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.0.10",
+          "date": "2026-09-13T11:02:34Z",
+          "localizedDescription": "Prépare la release 1.0.10 (P-Stabilize).",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.10/lbxmb_1.0.10_ios-unsigned.ipa",
+          "size": 20202062,
+          "minOSVersion": "16.4"
+        },
+        {
           "version": "1.0.9",
           "date": "2026-09-13T09:59:00Z",
           "localizedDescription": "Ajoute le logo kawaii (accueil + splash) et aligne les stats Accueil.",
