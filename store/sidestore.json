@@ -14,6 +14,14 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.0.16",
+          "date": "2026-09-26T20:54:56Z",
+          "localizedDescription": "Ajoute un panneau de logs PKG temporaire pour debugger BGFT / HTTP Range en 1.0.16.",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.16/lbxmb_1.0.16_ios-unsigned.ipa",
+          "size": 20128328,
+          "minOSVersion": "16.4"
+        },
+        {
           "version": "1.0.15",
           "date": "2026-09-26T20:32:59Z",
           "localizedDescription": "Corrige GoldHEN BGFT, évite le dcache multi‑Go et peaufine FTP/navbar en 1.0.15.",
