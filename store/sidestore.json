@@ -14,6 +14,14 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.0.14",
+          "date": "2026-09-26T20:19:44Z",
+          "localizedDescription": "Corrige l’envoi PKG multi‑Go (plus d’OOM / écran noir) en 1.0.14.",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.14/lbxmb_1.0.14_ios-unsigned.ipa",
+          "size": 20116307,
+          "minOSVersion": "16.4"
+        },
+        {
           "version": "1.0.12",
           "date": "2026-09-26T19:28:54Z",
           "localizedDescription": "Ajoute FTP anttech et l’envoi PKG LAN (protocole pkg-sender) en 1.0.12.",
