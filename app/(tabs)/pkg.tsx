@@ -147,8 +147,17 @@ export default function PkgSenderScreen() {
   const pickFromPhone = async () => {
     try {
       setBusy(true);
-      const picked = await pickDeviceFiles({ multiple: true, type: '*/*' });
-      if (picked.length === 0) return;
+      setStatus(t('pkg.picking'));
+      // Never copy multi‑GB PKG into cache — that black-screens the app.
+      const picked = await pickDeviceFiles({
+        multiple: true,
+        type: '*/*',
+        copyToCacheDirectory: false,
+      });
+      if (picked.length === 0) {
+        setStatus(null);
+        return;
+      }
 
       const accepted: PkgLocalFile[] = [];
       let rejected = 0;
@@ -169,6 +178,7 @@ export default function PkgSenderScreen() {
 
       if (accepted.length === 0) {
         Alert.alert(t('pkg.pickInvalidTitle'), t('pkg.pickInvalidBody'));
+        setStatus(null);
         return;
       }
 

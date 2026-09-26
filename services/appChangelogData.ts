@@ -1,5 +1,10 @@
 /** Keep in sync with `docs/app-changelog.md`. */
-export const APP_CHANGELOG_MD = `## 1.0.13
+export const APP_CHANGELOG_MD = `## 1.0.14
+
+- Envoi PKG multi‑Go : plus de copie cache à la sélection, lecture HTTP par morceaux (évite écran noir / OOM)
+- FTP : matérialise \`content://\` en chemin local via copie native streamée
+
+## 1.0.13
 
 - Correctif connexion Discord / « Continuer sur le site » (\`dismissBrowser\` sans \`.catch\` sur undefined)
 - Téléchargements : explorateur Android / Fichiers iOS, dossier par défaut dans Paramètres, choix au premier DL

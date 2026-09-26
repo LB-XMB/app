@@ -1,3 +1,4 @@
+import { Directory, File, Paths } from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import { Platform } from 'react-native';
 
@@ -10,12 +11,19 @@ export interface PickedDeviceFile {
 
 /**
  * Opens the native Android / iOS document picker.
- * Files are copied into the app cache so native FTP / HTTP can read them.
+ *
+ * Default: **no** copy into the app cache. Copying a multi‑GB PKG freezes /
+ * OOM the app (black screen). PKG reads the picker URI (`content://`) directly.
  */
 export async function pickDeviceFiles(options?: {
   multiple?: boolean;
   /** MIME types; defaults to any file. */
   type?: string | string[];
+  /**
+   * Force a cache copy. Prefer `false` for large PKG/ISO.
+   * @default false
+   */
+  copyToCacheDirectory?: boolean;
 }): Promise<PickedDeviceFile[]> {
   if (Platform.OS === 'web') {
     throw new Error('Sélection de fichiers indisponible sur le web.');
@@ -23,18 +31,52 @@ export async function pickDeviceFiles(options?: {
 
   const result = await DocumentPicker.getDocumentAsync({
     type: options?.type ?? '*/*',
-    copyToCacheDirectory: true,
+    copyToCacheDirectory: options?.copyToCacheDirectory ?? false,
     multiple: options?.multiple ?? true,
   });
 
   if (result.canceled || !result.assets?.length) return [];
 
-  return result.assets.map((asset) => ({
-    name: asset.name || asset.uri.split('/').pop() || 'fichier',
-    uri: asset.uri,
-    size: typeof asset.size === 'number' ? asset.size : 0,
-    mimeType: asset.mimeType ?? null,
-  }));
+  return result.assets.map((asset) => {
+    const name = asset.name || asset.uri.split('/').pop() || 'fichier';
+    let size = typeof asset.size === 'number' ? asset.size : 0;
+    if (size <= 0) {
+      try {
+        const file = new File(asset.uri);
+        size = file.size ?? 0;
+      } catch {
+        /* keep 0 */
+      }
+    }
+    return {
+      name,
+      uri: asset.uri,
+      size,
+      mimeType: asset.mimeType ?? null,
+    };
+  });
+}
+
+/**
+ * Native FTP needs a real filesystem path. Materialize `content://` (etc.)
+ * into the cache via a native stream copy — not a JS base64 load.
+ */
+export async function ensureLocalFileUri(uri: string, fileName: string): Promise<string> {
+  if (uri.startsWith('file://') || uri.startsWith('/')) return uri;
+
+  const safe = fileName.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'fichier';
+  const dir = new Directory(Paths.cache, 'device-staging');
+  if (!dir.exists) dir.create({ intermediates: true });
+  const dest = new File(dir, safe);
+  if (dest.exists) {
+    try {
+      dest.delete();
+    } catch {
+      /* overwrite via copy */
+    }
+  }
+  await new File(uri).copy(dest);
+  return dest.uri;
 }
 
 const PKG_EXT = ['.pkg'];

@@ -1,6 +1,7 @@
 import FtpService, { addProgressListener, makeProgressToken } from '@anttech/react-native-ftp';
 
 import { FtpClient } from '@/services/ftp';
+import { ensureLocalFileUri } from '@/services/pickDeviceFiles';
 import {
   recoverFtpUploadQueueAfterCrash,
   resolveFtpPassword,
@@ -40,7 +41,21 @@ export async function pumpFtpUploadQueue(): Promise<void> {
         password,
       });
 
-      const token = makeProgressToken(next.localUri, next.remotePath, false);
+      let localUri = next.localUri;
+      try {
+        localUri = await ensureLocalFileUri(next.localUri, next.fileName);
+      } catch (error) {
+        useFtpStore.getState().updateUpload(next.id, {
+          status: 'error',
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Impossible de préparer le fichier pour le FTP.',
+        });
+        continue;
+      }
+
+      const token = makeProgressToken(localUri, next.remotePath, false);
       const unsub = addProgressListener((info) => {
         if (info.token !== token) return;
         useFtpStore.getState().updateUpload(next.id, {
@@ -50,7 +65,7 @@ export async function pumpFtpUploadQueue(): Promise<void> {
 
       try {
         await client.connect();
-        await client.uploadFile(next.localUri, next.remotePath);
+        await client.uploadFile(localUri, next.remotePath);
         await client.disconnect().catch(() => undefined);
         useFtpStore.getState().updateUpload(next.id, { status: 'done', progress: 100 });
       } catch (error) {

@@ -90,6 +90,7 @@
     "scanFound": "Trouvé {{ip}} ({{count}})",
     "queued": "Ajouté à la file : {{name}}",
     "queuedMany": "{{count}} fichiers ajoutés à la file",
+    "picking": "Sélection…",
     "browse": "Parcourir…",
     "pickAdded": "{{count}} fichier(s) ajouté(s) à la liste",
     "pickInvalidTitle": "Format non supporté",

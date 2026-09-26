@@ -1,3 +1,8 @@
+## 1.0.14
+
+- Envoi PKG multi‑Go : plus de copie cache à la sélection, lecture HTTP par morceaux (évite écran noir / OOM)
+- FTP : matérialise `content://` en chemin local via copie native streamée
+
 ## 1.0.13
 
 - Correctif connexion Discord / « Continuer sur le site » (`dismissBrowser` sans `.catch` sur undefined)

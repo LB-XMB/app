@@ -1,4 +1,4 @@
-import { File } from 'expo-file-system';
+import { File, FileMode } from 'expo-file-system';
 import TcpSocket from 'react-native-tcp-socket';
 
 import { FILE_SERVER_PORT } from './types';
@@ -12,6 +12,9 @@ type Registered = {
 /**
  * Minimal LAN HTTP server with Range (206) support.
  * Protocol shape matches pkg-sender's RangeFileServer (Loopayeh, MIT).
+ *
+ * Reads are streamed via FileHandle (seek + chunked readBytes) — never
+ * `File.slice` / `bytesSync`, which load the whole multi‑GB PKG into RAM.
  */
 class HttpRangeServer {
   private server: TcpSocket.Server | null = null;
@@ -184,6 +187,12 @@ class HttpRangeServer {
       }
     }
 
+    if (file.size <= 0) {
+      this.writeRaw(socket, 'HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
     if (start < 0 || end < start || start >= file.size) {
       this.writeRaw(
         socket,
@@ -223,22 +232,32 @@ class HttpRangeServer {
     id: string,
   ) {
     const file = new File(uri);
-    // Chunked via Blob.slice to avoid loading multi-GB packages into RAM.
-    const chunkSize = 512 * 1024;
-    let offset = start;
-    while (offset <= end) {
-      const chunkEnd = Math.min(offset + chunkSize, end + 1);
-      const blob = file.slice(offset, chunkEnd);
-      const buf = new Uint8Array(await blob.arrayBuffer());
-      await new Promise<void>((resolve, reject) => {
-        socket.write(Buffer.from(buf), undefined, (err?: Error) =>
-          err ? reject(err) : resolve(),
-        );
-      });
-      const served = (this.servedById.get(id) ?? 0) + buf.byteLength;
-      this.servedById.set(id, served);
-      this.onServed?.(id, served);
-      offset = chunkEnd;
+    // ReadOnly works for file:// and content:// (SAF) without loading the whole PKG.
+    const handle = file.open(FileMode.ReadOnly);
+    try {
+      handle.offset = start;
+      const chunkSize = 512 * 1024;
+      let offset = start;
+      while (offset <= end) {
+        const toRead = Math.min(chunkSize, end - offset + 1);
+        const buf = handle.readBytes(toRead);
+        if (buf.byteLength === 0) break;
+        await new Promise<void>((resolve, reject) => {
+          socket.write(Buffer.from(buf), undefined, (err?: Error) =>
+            err ? reject(err) : resolve(),
+          );
+        });
+        const served = (this.servedById.get(id) ?? 0) + buf.byteLength;
+        this.servedById.set(id, served);
+        this.onServed?.(id, served);
+        offset += buf.byteLength;
+      }
+    } finally {
+      try {
+        handle.close();
+      } catch {
+        // ignore
+      }
     }
   }
 }

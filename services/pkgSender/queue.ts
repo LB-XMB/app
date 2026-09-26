@@ -96,6 +96,22 @@ export async function pumpPkgSendQueue(): Promise<void> {
           throw new Error('IP LAN du téléphone introuvable (Wi-Fi requis).');
         }
 
+        let size = next.size;
+        if (size <= 0) {
+          try {
+            const file = new File(next.localUri);
+            size = file.size ?? 0;
+          } catch {
+            size = 0;
+          }
+          if (size > 0) {
+            usePkgSenderStore.getState().update(next.id, { size });
+          }
+        }
+        if (size <= 0) {
+          throw new Error('Taille du fichier inconnue — resélectionne le PKG.');
+        }
+
         await httpRangeServer.start(FILE_SERVER_PORT);
         httpRangeServer.setProgressListener((fileId, served) => {
           if (fileId !== next.id) return;
@@ -104,7 +120,7 @@ export async function pumpPkgSendQueue(): Promise<void> {
 
         const mime =
           next.kind === 'pkg' ? 'application/octet-stream' : 'application/octet-stream';
-        httpRangeServer.registerFile(next.id, next.localUri, next.size, mime);
+        httpRangeServer.registerFile(next.id, next.localUri, size, mime);
         const url = pkgUrl(lanIp, next.id);
 
         const mode =
@@ -129,20 +145,20 @@ export async function pumpPkgSendQueue(): Promise<void> {
           if (!result.ok) throw new Error(result.reply || 'Pull homebrew échoué');
           usePkgSenderStore.getState().update(next.id, {
             status: 'done',
-            served: next.size,
+            served: size,
           });
           continue;
         }
 
         if (mode === 'goldhen') {
-          const man = buildGoldHenManifest(url, next.size);
+          const man = buildGoldHenManifest(url, size);
           httpRangeServer.registerManifest(next.id, man);
           const result = await pushGoldHen({
             consoleIp,
             lanIp,
             manifestUrl: manifestUrl(lanIp, next.id),
             title: next.fileName.replace(/\.pkg$/i, ''),
-            packageSize: next.size,
+            packageSize: size,
           });
           if (!result.ok) throw new Error(result.reply);
         } else {
@@ -155,18 +171,18 @@ export async function pumpPkgSendQueue(): Promise<void> {
         }
 
         // Wait until most of the file was served (console download), with timeout.
-        const deadline = Date.now() + Math.max(60_000, next.size / 50_000);
+        const deadline = Date.now() + Math.max(60_000, size / 50_000);
         while (Date.now() < deadline) {
           const served = httpRangeServer.servedFor(next.id);
           usePkgSenderStore.getState().update(next.id, { served });
-          if (next.size > 0 && served >= next.size * 0.98) break;
-          if (state.ps4Mode && served > 0 && served >= next.size) break;
+          if (size > 0 && served >= size * 0.98) break;
+          if (state.ps4Mode && served > 0 && served >= size) break;
           await new Promise((r) => setTimeout(r, 500));
         }
 
         usePkgSenderStore.getState().update(next.id, {
           status: 'done',
-          served: Math.max(httpRangeServer.servedFor(next.id), next.size > 0 ? next.size : 0),
+          served: Math.max(httpRangeServer.servedFor(next.id), size),
         });
       } catch (error) {
         usePkgSenderStore.getState().update(next.id, {
