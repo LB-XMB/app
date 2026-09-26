@@ -2,6 +2,7 @@ import { Buffer } from 'buffer';
 import TcpSocket from 'react-native-tcp-socket';
 
 import { loadPs4DpiPayload } from './ps4DpiPayload';
+import { pkgDebug } from './pkgDebug';
 
 const MARKER = new Uint8Array([0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4]);
 
@@ -123,6 +124,7 @@ export async function pushGoldHen(opts: {
   // Port big-endian ushort at marker+4 (pkg-sender)
   patched[marker + 4] = (cbPort >> 8) & 0xff;
   patched[marker + 5] = cbPort & 0xff;
+  pkgDebug(`GoldHEN patch lan=${opts.lanIp} cbPort=${cbPort}`);
 
   let injected = false;
   let lastErr = '';
@@ -130,10 +132,12 @@ export async function pushGoldHen(opts: {
     const ps = await connectPayloadPort(opts.consoleIp);
     if (!ps) {
       lastErr = 'Binloader fermé sur 9090/9021/9020 — active GoldHEN Payload Server';
+      pkgDebug(`binloader try ${attempt}/3 fail`);
     } else {
       try {
         await writeAll(ps, Buffer.from(patched));
         injected = true;
+        pkgDebug(`payload injecté try ${attempt}`);
         try {
           ps.destroy();
         } catch {
@@ -142,6 +146,7 @@ export async function pushGoldHen(opts: {
         break;
       } catch (error) {
         lastErr = error instanceof Error ? error.message : 'Envoi payload échoué';
+        pkgDebug(`payload send fail: ${lastErr}`);
         try {
           ps.destroy();
         } catch {
@@ -159,7 +164,9 @@ export async function pushGoldHen(opts: {
 
   let cb: TcpSocket.Socket;
   try {
+    pkgDebug('attente callback console…');
     cb = await accepted;
+    pkgDebug('callback reçu');
   } catch {
     cbServer.close();
     return {
@@ -171,6 +178,9 @@ export async function pushGoldHen(opts: {
   try {
     let cat = (opts.contentType ?? '').trim().toUpperCase();
     if (!cat.startsWith('PS4')) cat = cat.length === 0 ? 'PS4GD' : `PS4${cat}`;
+    pkgDebug(
+      `callback packet type=${cat} cid=${(opts.contentId ?? '').slice(0, 36)} size=${opts.packageSize} url=${opts.manifestUrl}`
+    );
 
     const urlB = Buffer.from(opts.manifestUrl, 'utf8');
     const nameB = Buffer.from(opts.title || opts.contentId || opts.titleId || 'PKG', 'utf8');

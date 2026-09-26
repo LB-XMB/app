@@ -11,12 +11,16 @@ import {
 import { pushGoldHen } from './goldhen';
 import { httpRangeServer } from './httpRangeServer';
 import { getLanIp } from './lanIp';
+import { pkgDebug } from './pkgDebug';
 import { readPkgMeta } from './pkgMeta';
 import { recoverPkgQueueAfterCrash, usePkgSenderStore } from './store';
 import type { PkgLocalFile } from './types';
 import { FILE_SERVER_PORT } from './types';
 
 const DOWNLOAD_DIRECTORY = 'telechargements';
+
+/** Fixed URL id like pkg-sender Android (`/pkg/pkg`) — one install at a time. */
+const SERVE_ID = 'pkg';
 
 const IMAGE_EXT = ['.exfat', '.ffpkg', '.ffpfsc'];
 
@@ -65,6 +69,56 @@ export function retryPkgSend(id: string): void {
   void pumpPkgSendQueue();
 }
 
+/**
+ * Wait until the console has pulled the PKG (like pkg-sender TrackInstallAsync).
+ * Previously we used ~60s for multi‑GB files then revoked the URL → BGFT errors.
+ */
+async function trackConsoleDownload(
+  jobId: string,
+  serveId: string,
+  totalSize: number
+): Promise<{ ok: boolean; served: number }> {
+  const t0 = Date.now();
+  let lastServed = 0;
+  let stallSince = t0;
+  const maxMs = 6 * 60 * 60 * 1000;
+  const stallMs = 120_000;
+  let lastLogAt = 0;
+
+  pkgDebug(`attente download console · ${formatMb(totalSize)}`);
+
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const served = httpRangeServer.servedFor(serveId);
+    usePkgSenderStore.getState().update(jobId, { served });
+
+    const now = Date.now();
+    if (served > lastServed) {
+      lastServed = served;
+      stallSince = now;
+    }
+
+    if (now - lastLogAt > 5000) {
+      lastLogAt = now;
+      const pct = totalSize > 0 ? Math.round((100 * served) / totalSize) : 0;
+      pkgDebug(`progress ${formatMb(served)} / ${formatMb(totalSize)} (${pct}%)`);
+    }
+
+    if (totalSize > 0 && served >= totalSize * 0.98) {
+      pkgDebug(`download OK ${formatMb(served)}`);
+      return { ok: true, served };
+    }
+    if (now - stallSince > stallMs) {
+      pkgDebug(`stall 120s · served=${formatMb(served)}`);
+      return { ok: served >= totalSize * 0.98 && totalSize > 0, served };
+    }
+    if (now - t0 > maxMs) {
+      pkgDebug('timeout 6h');
+      return { ok: false, served };
+    }
+  }
+}
+
 export async function pumpPkgSendQueue(): Promise<void> {
   if (pumping) return;
   pumping = true;
@@ -90,9 +144,12 @@ export async function pumpPkgSendQueue(): Promise<void> {
       }
 
       state.update(next.id, { status: 'running', error: null, served: 0 });
+      pkgDebug(`▶ ${next.fileName} (${formatMb(next.size)}) uri=${next.localUri.slice(0, 60)}`);
 
       try {
-        const lanIp = await getLanIp();
+        const detected = await getLanIp();
+        const lanIp = (state.lanIpOverride.trim() || detected || '').trim();
+        pkgDebug(`LAN auto=${detected ?? '—'} override=${state.lanIpOverride || '—'} → ${lanIp || '?'}`);
         if (!lanIp) {
           throw new Error('IP LAN du téléphone introuvable (Wi-Fi requis).');
         }
@@ -114,21 +171,23 @@ export async function pumpPkgSendQueue(): Promise<void> {
         }
 
         await httpRangeServer.start(FILE_SERVER_PORT);
+        pkgDebug(`HTTP :${FILE_SERVER_PORT} started`);
         httpRangeServer.setProgressListener((fileId, served) => {
-          if (fileId !== next.id) return;
+          if (fileId !== SERVE_ID) return;
           usePkgSenderStore.getState().update(next.id, { served });
         });
 
-        const mime =
-          next.kind === 'pkg' ? 'application/octet-stream' : 'application/octet-stream';
-        httpRangeServer.registerFile(next.id, next.localUri, size, mime);
-        const url = pkgUrl(lanIp, next.id);
+        const mime = 'application/octet-stream';
+        httpRangeServer.registerFile(SERVE_ID, next.localUri, size, mime);
+        const url = pkgUrl(lanIp, SERVE_ID);
+        pkgDebug(`PKG URL ${url}`);
 
         const mode =
           state.lastMode && state.lastMode !== 'offline'
             ? state.lastMode
             : await detectConsoleMode(consoleIp);
         usePkgSenderStore.getState().setLastMode(mode);
+        pkgDebug(`mode=${mode} console=${consoleIp}`);
 
         if (mode === 'offline') {
           throw new Error('Console hors ligne — démarre RPI / pkg-receiver / GoldHEN.');
@@ -143,77 +202,100 @@ export async function pumpPkgSendQueue(): Promise<void> {
             fileUrl: url,
             remoteName: next.fileName,
           });
+          pkgDebug(`pull homebrew ok=${result.ok} ${result.reply.slice(0, 80)}`);
           if (!result.ok) throw new Error(result.reply || 'Pull homebrew échoué');
+          const tracked = await trackConsoleDownload(next.id, SERVE_ID, size);
           usePkgSenderStore.getState().update(next.id, {
-            status: 'done',
-            served: size,
+            status: tracked.ok ? 'done' : 'error',
+            served: tracked.served,
+            error: tracked.ok
+              ? null
+              : 'Téléchargement console incomplet (réseau / timeout).',
           });
           continue;
         }
 
+        let pkgSize = size;
         if (mode === 'goldhen') {
           const meta = await readPkgMeta(
             next.localUri,
             size,
             next.fileName.replace(/\.pkg$/i, '')
           );
-          const pkgSize = meta.packageSize > 0 ? meta.packageSize : size;
+          pkgSize = meta.packageSize > 0 ? meta.packageSize : size;
+          pkgDebug(
+            `meta title=${meta.title.slice(0, 40)} cid=${meta.contentId || '∅'} type=${meta.contentType || '∅'} digest=${meta.digest.slice(0, 16)}… size=${formatMb(pkgSize)}`
+          );
           if (!meta.digest) {
             throw new Error(
               'Digest PKG introuvable — le fichier est peut‑être corrompu ou inaccessible.'
             );
           }
-          // Manifest must use real packageDigest (CNT+0xFE0); empty digest → BGFT errors.
+          if (!meta.contentId) {
+            throw new Error(
+              'CONTENT_ID introuvable dans le PKG — fichier invalide ou illisible.'
+            );
+          }
+          httpRangeServer.registerFile(SERVE_ID, next.localUri, pkgSize, mime);
           const man = buildGoldHenManifest(url, pkgSize, meta.digest);
-          httpRangeServer.registerManifest(next.id, man);
-          // Keep registered size in sync with meta (picker size can be 0).
-          httpRangeServer.registerFile(next.id, next.localUri, pkgSize, mime);
+          httpRangeServer.registerManifest(SERVE_ID, man);
+          const manUrl = manifestUrl(lanIp, SERVE_ID);
+          pkgDebug(`manifest ${manUrl}`);
+          pkgDebug(`inject GoldHEN…`);
           const result = await pushGoldHen({
             consoleIp,
             lanIp,
-            manifestUrl: manifestUrl(lanIp, next.id),
+            manifestUrl: manUrl,
             title: meta.title || next.fileName.replace(/\.pkg$/i, ''),
             contentId: meta.contentId,
             titleId: meta.titleId,
             contentType: meta.contentType,
             packageSize: pkgSize,
           });
+          pkgDebug(`GoldHEN reply ok=${result.ok} ${result.reply}`);
           if (!result.ok) throw new Error(result.reply);
         } else {
+          pkgDebug(`RPI/receiver install…`);
           const result = await pushInstall({
             consoleIp,
             fileUrl: url,
             name: next.fileName.replace(/\.pkg$/i, ''),
           });
+          pkgDebug(`install ok=${result.ok} ${result.reply.slice(0, 100)}`);
           if (!result.ok) throw new Error(result.reply || 'Install refusé');
         }
 
-        // Wait until most of the file was served (console download), with timeout.
-        const deadline = Date.now() + Math.max(60_000, size / 50_000);
-        while (Date.now() < deadline) {
-          const served = httpRangeServer.servedFor(next.id);
-          usePkgSenderStore.getState().update(next.id, { served });
-          if (size > 0 && served >= size * 0.98) break;
-          if (state.ps4Mode && served > 0 && served >= size) break;
-          await new Promise((r) => setTimeout(r, 500));
+        const tracked = await trackConsoleDownload(next.id, SERVE_ID, pkgSize);
+        if (!tracked.ok) {
+          throw new Error(
+            tracked.served === 0
+              ? `La console n’a pas téléchargé le PKG (IP téléphone ${lanIp} :9898 inaccessible ?).`
+              : `Téléchargement coupé (${formatMb(tracked.served)} / ${formatMb(pkgSize)}). Réessaie ou vide les notifs BGFT sur la PS4.`
+          );
         }
 
+        pkgDebug(`✓ done ${next.fileName}`);
         usePkgSenderStore.getState().update(next.id, {
           status: 'done',
-          served: Math.max(httpRangeServer.servedFor(next.id), size),
+          served: Math.max(tracked.served, pkgSize),
         });
       } catch (error) {
+        const message = error instanceof Error ? error.message : 'Envoi impossible';
+        pkgDebug(`✗ ERROR ${message}`);
         usePkgSenderStore.getState().update(next.id, {
           status: 'error',
-          error: error instanceof Error ? error.message : 'Envoi impossible',
+          error: message,
         });
       } finally {
-        httpRangeServer.revoke(next.id);
+        pkgDebug('revoke /pkg/pkg');
+        httpRangeServer.revoke(SERVE_ID);
       }
-
-      // PS4: strict one-by-one — already serial in this loop.
     }
   } finally {
     pumping = false;
   }
+}
+
+function formatMb(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(0)} Mo`;
 }

@@ -8,11 +8,14 @@ import type { ConsoleMode, PkgSendJob } from './types';
 
 interface PkgSenderState {
   consoleIp: string;
+  /** Optional override when auto-detected phone IP is wrong for the console. */
+  lanIpOverride: string;
   lastMode: ConsoleMode | null;
   /** Prefer one-by-one install (PS4). */
   ps4Mode: boolean;
   queue: PkgSendJob[];
   setConsoleIp: (ip: string) => void;
+  setLanIpOverride: (ip: string) => void;
   setLastMode: (mode: ConsoleMode | null) => void;
   setPs4Mode: (value: boolean) => void;
   enqueue: (job: Omit<PkgSendJob, 'id' | 'status' | 'error' | 'served' | 'createdAt'>) => string;
@@ -25,10 +28,12 @@ export const usePkgSenderStore = create<PkgSenderState>()(
   persist(
     (set) => ({
       consoleIp: '',
+      lanIpOverride: '',
       lastMode: null,
       ps4Mode: false,
       queue: [],
       setConsoleIp: (consoleIp) => set({ consoleIp }),
+      setLanIpOverride: (lanIpOverride) => set({ lanIpOverride }),
       setLastMode: (lastMode) => set({ lastMode }),
       setPs4Mode: (ps4Mode) => set({ ps4Mode }),
       enqueue: (job) => {
@@ -64,6 +69,7 @@ export const usePkgSenderStore = create<PkgSenderState>()(
       storage: createJSONStorage(() => zustandStorage),
       partialize: (state) => ({
         consoleIp: state.consoleIp,
+        lanIpOverride: state.lanIpOverride,
         ps4Mode: state.ps4Mode,
         queue: sanitizeRunningJobs(state.queue, { served: 0 }),
       }),
@@ -72,6 +78,7 @@ export const usePkgSenderStore = create<PkgSenderState>()(
         return {
           ...current,
           consoleIp: raw?.consoleIp ?? current.consoleIp,
+          lanIpOverride: raw?.lanIpOverride ?? current.lanIpOverride,
           ps4Mode: raw?.ps4Mode ?? current.ps4Mode,
           queue: sanitizeRunningJobs(raw?.queue ?? [], { error: null, served: 0 }),
           lastMode: null,

@@ -1,6 +1,7 @@
 import { File, FileMode } from 'expo-file-system';
 import TcpSocket from 'react-native-tcp-socket';
 
+import { pkgDebug } from './pkgDebug';
 import { FILE_SERVER_PORT } from './types';
 
 type Registered = {
@@ -122,6 +123,7 @@ class HttpRangeServer {
     const rangeHeader = header
       .split('\r\n')
       .find((line) => line.toLowerCase().startsWith('range:'));
+    pkgDebug(`HTTP ${method} ${path}${rangeHeader ? ' +Range' : ''}`);
 
     if (path.startsWith('/json/') && path.endsWith('.json')) {
       const id = path.slice('/json/'.length, -'.json'.length);
@@ -213,13 +215,17 @@ class HttpRangeServer {
     }
 
     const length = end - start + 1;
+    // Header order matches pkg-sender RangeFileServer (BGFT is picky).
     const statusLine = status === 206 ? 'HTTP/1.1 206 Partial Content' : 'HTTP/1.1 200 OK';
-    const extra =
-      status === 206 ? `Content-Range: bytes ${start}-${end}/${file.size}\r\n` : '';
-    this.writeRaw(
-      socket,
-      `${statusLine}\r\nContent-Type: ${file.mime}\r\nAccept-Ranges: bytes\r\nContent-Length: ${length}\r\n${extra}Access-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n`,
-    );
+    let headers = `${statusLine}\r\n`;
+    if (status === 206) {
+      headers += `Content-Range: bytes ${start}-${end}/${file.size}\r\n`;
+    }
+    headers += `Content-Type: ${file.mime}\r\n`;
+    headers += `Content-Length: ${length}\r\n`;
+    headers += `Accept-Ranges: bytes\r\n`;
+    headers += `Connection: close\r\n\r\n`;
+    this.writeRaw(socket, headers);
 
     if (method === 'HEAD') {
       socket.destroy();
@@ -246,7 +252,12 @@ class HttpRangeServer {
     const handle = file.open(FileMode.ReadOnly);
     try {
       handle.offset = start;
-      const chunkSize = 512 * 1024;
+      if (handle.offset !== null && handle.offset !== start) {
+        throw new Error(
+          `Seek fichier impossible (offset ${handle.offset} ≠ ${start}) — URI non seekable.`
+        );
+      }
+      const chunkSize = 256 * 1024;
       let offset = start;
       while (offset <= end) {
         const toRead = Math.min(chunkSize, end - offset + 1);

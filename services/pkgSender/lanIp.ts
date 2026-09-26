@@ -5,6 +5,7 @@ export async function getLanIp(): Promise<string | null> {
   try {
     const ip = await Network.getIpAddressAsync();
     if (!ip || ip === '0.0.0.0') return null;
+    if (ip.includes(':')) return null; // IPv6 — PS4 BGFT wants IPv4 URLs
     if (ip.startsWith('169.254.')) return null;
     if (ip === '127.0.0.1') return null;
     return ip;

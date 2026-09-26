@@ -1,3 +1,8 @@
+## 1.0.16
+
+- PKG debug temporaire : panneau de logs live (LAN, mode, URL, HTTP Range, progression, erreurs GoldHEN/BGFT)
+- Champ IP LAN manuelle + attente download console jusqu’à ~98 % / stall 120s / 6h (évite revoke HTTP prématuré)
+
 ## 1.0.15
 
 - GoldHEN / BGFT : digest PKG + CONTENT_ID dans le manifeste (corrige DPI BGFT Error)

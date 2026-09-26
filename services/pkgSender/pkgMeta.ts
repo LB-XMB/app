@@ -16,10 +16,12 @@ function u32be(buf: Uint8Array, o: number): number {
 }
 
 function u64le(buf: Uint8Array, o: number): number {
-  // PKG sizes fit in JS safe integer; read as two u32 LE.
-  const lo = buf[o]! | (buf[o + 1]! << 8) | (buf[o + 2]! << 16) | (buf[o + 3]! << 24);
-  const hi = buf[o + 4]! | (buf[o + 5]! << 8) | (buf[o + 6]! << 16) | (buf[o + 7]! << 24);
-  return (hi >>> 0) * 0x1_0000_0000 + (lo >>> 0);
+  // Must use >>> 0 — JS << is signed 32-bit and corrupts offsets ≥ 0x80000000.
+  const lo =
+    (buf[o]! | (buf[o + 1]! << 8) | (buf[o + 2]! << 16) | (buf[o + 3]! << 24)) >>> 0;
+  const hi =
+    (buf[o + 4]! | (buf[o + 5]! << 8) | (buf[o + 6]! << 16) | (buf[o + 7]! << 24)) >>> 0;
+  return hi * 0x1_0000_0000 + lo;
 }
 
 function asciiZ(buf: Uint8Array, o: number, n: number): string {

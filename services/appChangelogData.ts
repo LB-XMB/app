@@ -1,5 +1,10 @@
 /** Keep in sync with `docs/app-changelog.md`. */
-export const APP_CHANGELOG_MD = `## 1.0.15
+export const APP_CHANGELOG_MD = `## 1.0.16
+
+- PKG debug temporaire : panneau de logs live (LAN, mode, URL, HTTP Range, progression, erreurs GoldHEN/BGFT)
+- Champ IP LAN manuelle + attente download console jusqu’à ~98 % / stall 120s / 6h (évite revoke HTTP prématuré)
+
+## 1.0.15
 
 - GoldHEN / BGFT : digest PKG + CONTENT_ID dans le manifeste (corrige DPI BGFT Error)
 - Plus de copie multi‑Go dans le dcache ; purge DocumentPicker / staging au démarrage
