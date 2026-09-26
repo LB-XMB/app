@@ -36,6 +36,7 @@ class HttpRangeServer {
   registerFile(id: string, uri: string, size: number, mime = 'application/octet-stream') {
     this.files.set(id, { uri, size, mime });
     this.servedById.set(id, 0);
+    this.servedById.set(`_req_${id}`, 0);
   }
 
   registerManifest(id: string, json: string) {
@@ -57,11 +58,13 @@ class HttpRangeServer {
     return new Promise((resolve, reject) => {
       const server = TcpSocket.createServer((socket) => {
         const n = ++this.connSeq;
-        try {
-          const remote = `${(socket as { remoteAddress?: string }).remoteAddress ?? '?'}:${(socket as { remotePort?: number }).remotePort ?? '?'}`;
-          pkgDebug(`HTTP accept #${n} from ${remote}`);
-        } catch {
-          pkgDebug(`HTTP accept #${n}`);
+        if (n <= 3 || n % 25 === 0) {
+          try {
+            const remote = `${(socket as { remoteAddress?: string }).remoteAddress ?? '?'}:${(socket as { remotePort?: number }).remotePort ?? '?'}`;
+            pkgDebug(`HTTP accept #${n} from ${remote}`);
+          } catch {
+            pkgDebug(`HTTP accept #${n}`);
+          }
         }
         void this.handleClient(socket);
       });
@@ -239,9 +242,14 @@ class HttpRangeServer {
     headers += `Accept-Ranges: bytes\r\n`;
     headers += `Connection: close\r\n\r\n`;
 
-    pkgDebug(
-      `pkg ${status === 206 ? '206' : '200'} ${id} bytes=${start}-${end}/${file.size}`,
-    );
+    // Log first ranges + every 40th to avoid flooding the debug panel mid-transfer.
+    const rangeN = (this.servedById.get(`_req_${id}`) ?? 0) + 1;
+    this.servedById.set(`_req_${id}`, rangeN);
+    if (rangeN <= 5 || rangeN % 40 === 0 || status !== 206) {
+      pkgDebug(
+        `pkg ${status === 206 ? '206' : '200'} #${rangeN} ${id} bytes=${start}-${end}/${file.size}`,
+      );
+    }
     await this.writeBytes(socket, headers);
 
     if (method === 'HEAD') {
@@ -294,41 +302,59 @@ class HttpRangeServer {
     end: number,
     id: string,
   ) {
-    const file = new File(uri);
-    // ReadOnly works for file:// and content:// (SAF) without loading the whole PKG.
-    const handle = file.open(FileMode.ReadOnly);
-    try {
-      handle.offset = start;
-      if (handle.offset !== null && handle.offset !== start) {
-        throw new Error(
-          `Seek fichier impossible (offset ${handle.offset} ≠ ${start}) — URI non seekable.`,
-        );
-      }
-      const chunkSize = 256 * 1024;
-      let offset = start;
-      let firstChunk = true;
-      while (offset <= end) {
-        const toRead = Math.min(chunkSize, end - offset + 1);
-        const buf = handle.readBytes(toRead);
-        if (buf.byteLength === 0) break;
-        if (firstChunk) {
-          pkgDebug(`pkg stream start offset=${start} first=${buf.byteLength} o`);
-          firstChunk = false;
-        }
-        await this.writeBytes(socket, Buffer.from(buf));
-        const served = (this.servedById.get(id) ?? 0) + buf.byteLength;
-        this.servedById.set(id, served);
-        this.onServed?.(id, served);
-        offset += buf.byteLength;
-      }
-    } finally {
+    const chunkSize = 256 * 1024;
+    let offset = start;
+    let reopenLeft = 3;
+    let firstChunk = true;
+
+    while (offset <= end) {
+      const file = new File(uri);
+      let handle: ReturnType<File['open']> | null = null;
       try {
-        handle.close();
-      } catch {
-        // ignore
+        handle = file.open(FileMode.ReadOnly);
+        handle.offset = offset;
+        if (handle.offset !== null && handle.offset !== offset) {
+          throw new Error(
+            `Seek fichier impossible (offset ${handle.offset} ≠ ${offset}) — URI non seekable.`,
+          );
+        }
+
+        while (offset <= end) {
+          const toRead = Math.min(chunkSize, end - offset + 1);
+          let buf: Uint8Array;
+          try {
+            buf = handle.readBytes(toRead);
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            if (/Bad file descriptor|readBytes|file handle/i.test(msg) && reopenLeft > 0) {
+              reopenLeft -= 1;
+              pkgDebug(`SAF reopen offset=${offset} left=${reopenLeft} (${msg.slice(0, 60)})`);
+              break; // close + reopen outer loop
+            }
+            throw error;
+          }
+          if (buf.byteLength === 0) return;
+          if (firstChunk) {
+            pkgDebug(`pkg stream start offset=${start} first=${buf.byteLength} o`);
+            firstChunk = false;
+          }
+          await this.writeBytes(socket, Buffer.from(buf));
+          const served = (this.servedById.get(id) ?? 0) + buf.byteLength;
+          this.servedById.set(id, served);
+          this.onServed?.(id, served);
+          offset += buf.byteLength;
+          reopenLeft = 3; // healthy reads reset reopen budget
+        }
+      } finally {
+        if (handle) {
+          try {
+            handle.close();
+          } catch {
+            // ignore
+          }
+        }
       }
     }
   }
 }
-
 export const httpRangeServer = new HttpRangeServer();

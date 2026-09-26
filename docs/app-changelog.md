@@ -1,3 +1,8 @@
+## 1.0.18
+
+- PKG GoldHEN : attendre 100 % + grace 60 s avant revoke (fini les 404 / « Téléchargement impossible » à ~98 %)
+- Reopen SAF si Bad file descriptor ; logs HTTP moins verbeux
+
 ## 1.0.17
 
 - Correctif HTTP : attendre le drain socket avant close (manifeste JSON plus tronqué → BGFT démarre le download PKG)

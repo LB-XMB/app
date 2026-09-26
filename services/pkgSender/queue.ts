@@ -70,8 +70,9 @@ export function retryPkgSend(id: string): void {
 }
 
 /**
- * Wait until the console has pulled the PKG (like pkg-sender TrackInstallAsync).
- * Previously we used ~60s for multi‑GB files then revoked the URL → BGFT errors.
+ * Wait until the console has pulled the full PKG (pkg-sender TrackInstallAsync).
+ * Must reach ~100% before revoke — stopping at 98% caused PS4 « Téléchargement
+ * impossible » (last ranges hit 404 after revoke).
  */
 async function trackConsoleDownload(
   jobId: string,
@@ -82,10 +83,11 @@ async function trackConsoleDownload(
   let lastServed = 0;
   let stallSince = t0;
   const maxMs = 6 * 60 * 60 * 1000;
-  const stallMs = 120_000;
+  // Near the end BGFT slows / retries — allow a longer quiet period before fail.
+  const stallMs = 180_000;
   let lastLogAt = 0;
 
-  pkgDebug(`attente download console · ${formatMb(totalSize)}`);
+  pkgDebug(`attente download console · ${formatMb(totalSize)} (cible 100%)`);
 
   for (;;) {
     await new Promise((r) => setTimeout(r, 1000));
@@ -104,19 +106,43 @@ async function trackConsoleDownload(
       pkgDebug(`progress ${formatMb(served)} / ${formatMb(totalSize)} (${pct}%)`);
     }
 
-    if (totalSize > 0 && served >= totalSize * 0.98) {
-      pkgDebug(`download OK ${formatMb(served)}`);
+    // Exact full size (overlapping Range retries can push served slightly over).
+    if (totalSize > 0 && served >= totalSize) {
+      pkgDebug(`download OK ${formatMb(served)} (≥ ${formatMb(totalSize)})`);
       return { ok: true, served };
     }
     if (now - stallSince > stallMs) {
-      pkgDebug(`stall 120s · served=${formatMb(served)}`);
-      return { ok: served >= totalSize * 0.98 && totalSize > 0, served };
+      const pct = totalSize > 0 ? Math.round((100 * served) / totalSize) : 0;
+      pkgDebug(`stall ${stallMs / 1000}s · served=${formatMb(served)} (${pct}%)`);
+      return { ok: totalSize > 0 && served >= totalSize, served };
     }
     if (now - t0 > maxMs) {
       pkgDebug('timeout 6h');
       return { ok: false, served };
     }
   }
+}
+
+/** Keep /pkg/pkg registered a bit after 100% so trailing BGFT ranges don't 404. */
+async function graceKeepServing(serveId: string, maxMs = 60_000): Promise<void> {
+  const t0 = Date.now();
+  let lastHit = httpRangeServer.servedFor(serveId);
+  let idleSince = t0;
+  pkgDebug(`grace keep ${serveId} ≤${maxMs / 1000}s`);
+  while (Date.now() - t0 < maxMs) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const served = httpRangeServer.servedFor(serveId);
+    if (served > lastHit) {
+      lastHit = served;
+      idleSince = Date.now();
+    }
+    // No more bytes for 12s → console likely done verifying.
+    if (Date.now() - idleSince >= 12_000) {
+      pkgDebug('grace idle 12s — revoke ok');
+      return;
+    }
+  }
+  pkgDebug('grace timeout — revoke');
 }
 
 export async function pumpPkgSendQueue(): Promise<void> {
@@ -285,10 +311,13 @@ export async function pumpPkgSendQueue(): Promise<void> {
           );
         }
 
+        // PS4 often still Range-requests the tail after served≥size — don't 404 yet.
+        await graceKeepServing(SERVE_ID, 60_000);
+
         pkgDebug(`✓ done ${next.fileName}`);
         usePkgSenderStore.getState().update(next.id, {
           status: 'done',
-          served: Math.max(tracked.served, pkgSize),
+          served: tracked.served,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Envoi impossible';
