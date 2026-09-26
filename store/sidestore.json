@@ -14,6 +14,14 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.0.18",
+          "date": "2026-09-26T21:55:12Z",
+          "localizedDescription": "Attend 100 % du PKG avant revoke pour éviter l’échec BGFT en fin de transfert (1.0.18).",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.18/lbxmb_1.0.18_ios-unsigned.ipa",
+          "size": 20131355,
+          "minOSVersion": "16.4"
+        },
+        {
           "version": "1.0.17",
           "date": "2026-09-26T21:13:47Z",
           "localizedDescription": "Corrige la troncature du manifeste HTTP qui bloquait le download BGFT en 1.0.17.",
@@ -99,14 +107,6 @@
           "localizedDescription": "Login QR : openBrowserAsync, Origin/credentials pour éviter le 403 Better Auth, User-Agent LBXMB-App.",
           "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.6/lbxmb_1.0.6_ios-unsigned.ipa",
           "size": 19368461,
-          "minOSVersion": "16.4"
-        },
-        {
-          "version": "1.0.4",
-          "date": "2026-09-12T00:20:53Z",
-          "localizedDescription": "Previews README, correctif scroll catalogue, lecteur vidéo, Gradient Waves login, FTP et Obtainium.",
-          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.4/lbxmb_1.0.4_ios-unsigned.ipa",
-          "size": 19368299,
           "minOSVersion": "16.4"
         }
       ],
