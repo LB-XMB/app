@@ -1,3 +1,8 @@
+## 1.0.17
+
+- Correctif HTTP : attendre le drain socket avant close (manifeste JSON plus tronqué → BGFT démarre le download PKG)
+- Logs debug : accept TCP, taille manifeste, self-HEAD /pkg/pkg
+
 ## 1.0.16
 
 - PKG debug temporaire : panneau de logs live (LAN, mode, URL, HTTP Range, progression, erreurs GoldHEN/BGFT)

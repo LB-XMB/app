@@ -16,6 +16,9 @@ type Registered = {
  *
  * Reads are streamed via FileHandle (seek + chunked readBytes) — never
  * `File.slice` / `bytesSync`, which load the whole multi‑GB PKG into RAM.
+ *
+ * All responses await socket.write drain before destroy — otherwise RN TCP
+ * can truncate small JSON manifests and BGFT never starts the PKG download.
  */
 class HttpRangeServer {
   private server: TcpSocket.Server | null = null;
@@ -24,6 +27,7 @@ class HttpRangeServer {
   private servedById = new Map<string, number>();
   private port = FILE_SERVER_PORT;
   private onServed: ((id: string, total: number) => void) | null = null;
+  private connSeq = 0;
 
   setProgressListener(fn: ((id: string, total: number) => void) | null) {
     this.onServed = fn;
@@ -52,6 +56,13 @@ class HttpRangeServer {
 
     return new Promise((resolve, reject) => {
       const server = TcpSocket.createServer((socket) => {
+        const n = ++this.connSeq;
+        try {
+          const remote = `${(socket as { remoteAddress?: string }).remoteAddress ?? '?'}:${(socket as { remotePort?: number }).remotePort ?? '?'}`;
+          pkgDebug(`HTTP accept #${n} from ${remote}`);
+        } catch {
+          pkgDebug(`HTTP accept #${n}`);
+        }
         void this.handleClient(socket);
       });
 
@@ -87,7 +98,8 @@ class HttpRangeServer {
       const headerEnd = buffer.indexOf('\r\n\r\n');
       const header = buffer.slice(0, headerEnd);
       buffer = '';
-      void this.serveRequest(socket, header).catch(() => {
+      void this.serveRequest(socket, header).catch((err) => {
+        pkgDebug(`HTTP serve fail: ${err instanceof Error ? err.message : String(err)}`);
         try {
           socket.destroy();
         } catch {
@@ -108,8 +120,7 @@ class HttpRangeServer {
     const first = header.split('\r\n')[0] ?? '';
     const match = /^(GET|HEAD)\s+(\S+)\s+HTTP\/1\.[01]/i.exec(first);
     if (!match) {
-      this.writeRaw(socket, 'HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
-      socket.destroy();
+      await this.writeClose(socket, 'HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
       return;
     }
     const method = match[1]!.toUpperCase();
@@ -129,17 +140,20 @@ class HttpRangeServer {
       const id = path.slice('/json/'.length, -'.json'.length);
       const json = this.manifests.get(id);
       if (!json) {
-        this.writeRaw(socket, 'HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
-        socket.destroy();
+        pkgDebug(`manifest 404 id=${id}`);
+        await this.writeClose(socket, 'HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
         return;
       }
       const body = Buffer.from(json, 'utf8');
-      this.writeRaw(
-        socket,
-        `HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n`,
-      );
-      if (method !== 'HEAD') socket.write(body);
-      socket.destroy();
+      // Header order matches pkg-sender (no CORS on manifest — BGFT is picky).
+      const head =
+        `HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n`;
+      pkgDebug(`manifest 200 ${body.length} o · ${json.slice(0, 120)}…`);
+      if (method === 'HEAD') {
+        await this.writeClose(socket, head);
+        return;
+      }
+      await this.writeClose(socket, head, body);
       return;
     }
 
@@ -154,12 +168,13 @@ class HttpRangeServer {
         })),
       );
       const body = Buffer.from(catalog, 'utf8');
-      this.writeRaw(
-        socket,
-        `HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n`,
-      );
-      if (method !== 'HEAD') socket.write(body);
-      socket.destroy();
+      const head =
+        `HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n`;
+      if (method === 'HEAD') {
+        await this.writeClose(socket, head);
+        return;
+      }
+      await this.writeClose(socket, head, body);
       return;
     }
 
@@ -168,8 +183,8 @@ class HttpRangeServer {
     else if (path.startsWith('/pkg/')) id = path.slice('/pkg/'.length);
 
     if (!id || !this.files.has(id)) {
-      this.writeRaw(socket, 'HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
-      socket.destroy();
+      pkgDebug(`pkg 404 path=${path}`);
+      await this.writeClose(socket, 'HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
       return;
     }
 
@@ -200,17 +215,15 @@ class HttpRangeServer {
     }
 
     if (file.size <= 0) {
-      this.writeRaw(socket, 'HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
-      socket.destroy();
+      await this.writeClose(socket, 'HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
       return;
     }
 
     if (start < 0 || end < start || start >= file.size) {
-      this.writeRaw(
+      await this.writeClose(
         socket,
-        `HTTP/1.1 416 Range Not Satisfiable\r\nContent-Range: bytes */${file.size}\r\nConnection: close\r\n\r\n`,
+        `HTTP/1.1 416 Range Not Satisfiable\r\nContent-Range: bytes */${file.size}\r\nContent-Length: 0\r\nAccept-Ranges: bytes\r\nConnection: close\r\n\r\n`,
       );
-      socket.destroy();
       return;
     }
 
@@ -221,11 +234,15 @@ class HttpRangeServer {
     if (status === 206) {
       headers += `Content-Range: bytes ${start}-${end}/${file.size}\r\n`;
     }
-    headers += `Content-Type: ${file.mime}\r\n`;
+    headers += `Content-Type: application/octet-stream\r\n`;
     headers += `Content-Length: ${length}\r\n`;
     headers += `Accept-Ranges: bytes\r\n`;
     headers += `Connection: close\r\n\r\n`;
-    this.writeRaw(socket, headers);
+
+    pkgDebug(
+      `pkg ${status === 206 ? '206' : '200'} ${id} bytes=${start}-${end}/${file.size}`,
+    );
+    await this.writeBytes(socket, headers);
 
     if (method === 'HEAD') {
       socket.destroy();
@@ -236,8 +253,38 @@ class HttpRangeServer {
     socket.destroy();
   }
 
-  private writeRaw(socket: TcpSocket.Socket, text: string) {
-    socket.write(text);
+  /** Write UTF-8 text, wait for drain. */
+  private writeBytes(socket: TcpSocket.Socket, data: string | Buffer): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        socket.write(typeof data === 'string' ? data : data, undefined, (err?: Error) =>
+          err ? reject(err) : resolve(),
+        );
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+  }
+
+  /** Write response then close — never destroy before drain (truncates RN TCP). */
+  private async writeClose(
+    socket: TcpSocket.Socket,
+    head: string,
+    body?: Buffer,
+  ): Promise<void> {
+    try {
+      if (body && body.byteLength > 0) {
+        await this.writeBytes(socket, Buffer.concat([Buffer.from(head, 'utf8'), body]));
+      } else {
+        await this.writeBytes(socket, head);
+      }
+    } finally {
+      try {
+        socket.destroy();
+      } catch {
+        // ignore
+      }
+    }
   }
 
   private async writeFileRange(
@@ -254,20 +301,21 @@ class HttpRangeServer {
       handle.offset = start;
       if (handle.offset !== null && handle.offset !== start) {
         throw new Error(
-          `Seek fichier impossible (offset ${handle.offset} ≠ ${start}) — URI non seekable.`
+          `Seek fichier impossible (offset ${handle.offset} ≠ ${start}) — URI non seekable.`,
         );
       }
       const chunkSize = 256 * 1024;
       let offset = start;
+      let firstChunk = true;
       while (offset <= end) {
         const toRead = Math.min(chunkSize, end - offset + 1);
         const buf = handle.readBytes(toRead);
         if (buf.byteLength === 0) break;
-        await new Promise<void>((resolve, reject) => {
-          socket.write(Buffer.from(buf), undefined, (err?: Error) =>
-            err ? reject(err) : resolve(),
-          );
-        });
+        if (firstChunk) {
+          pkgDebug(`pkg stream start offset=${start} first=${buf.byteLength} o`);
+          firstChunk = false;
+        }
+        await this.writeBytes(socket, Buffer.from(buf));
         const served = (this.servedById.get(id) ?? 0) + buf.byteLength;
         this.servedById.set(id, served);
         this.onServed?.(id, served);
