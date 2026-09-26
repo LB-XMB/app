@@ -52,6 +52,9 @@ const config: ExpoConfig = {
       NSLocalNetworkUsageDescription:
         'LB’XMB découvre ta console PS4/PS5 sur le réseau local pour l’envoi de PKG et le FTP.',
       NSBonjourServices: ['_pkgsender._udp'],
+      // Expose Documents in the Files app so “default folder” downloads are visible.
+      UIFileSharingEnabled: true,
+      LSSupportsOpeningDocumentsInPlace: true,
     },
   },
   android: {
@@ -61,8 +64,7 @@ const config: ExpoConfig = {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: '#07080B',
     },
-    // Downloads land in the app sandbox and are handed to the share sheet, so
-    // no storage or media permission is needed.
+    // Downloads: sandbox + SAF folder or share sheet — no legacy storage perms.
     // Cleartext (LAN HTTP/FTP) is enabled via expo-build-properties.
     permissions: [
       'android.permission.INTERNET',

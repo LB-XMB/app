@@ -14,6 +14,13 @@ export type ConsentLevel = 'full' | 'none' | 'unset';
 
 export type CatalogueLayout = 'grid' | 'list';
 
+/**
+ * Where resource downloads should land after the sandbox save.
+ * `unset` — first download prompts; `ask` — native share/Files each time;
+ * `folder` — Android SAF URI or iOS Documents (visible in Files).
+ */
+export type DownloadDestinationMode = 'unset' | 'ask' | 'folder';
+
 interface SettingsState {
   theme: ThemePreference;
   consent: ConsentLevel;
@@ -32,6 +39,11 @@ interface SettingsState {
   lastSeenAppVersion: string | null;
   /** Accueil wordmark: kawaii-service-logo instead of the default. */
   kawaiiLogo: boolean;
+  downloadDestinationMode: DownloadDestinationMode;
+  /** Android SAF tree URI when mode is `folder`. */
+  downloadFolderUri: string | null;
+  /** Display label for the chosen folder. */
+  downloadFolderName: string | null;
   setTheme: (theme: ThemePreference) => void;
   setConsent: (consent: Exclude<ConsentLevel, 'unset'>) => void;
   setCatalogueLayout: (layout: CatalogueLayout) => void;
@@ -42,6 +54,11 @@ interface SettingsState {
   setLanguage: (language: 'system' | 'fr' | 'en') => void;
   setLastSeenAppVersion: (version: string) => void;
   setKawaiiLogo: (enabled: boolean) => void;
+  setDownloadDestination: (value: {
+    mode: DownloadDestinationMode;
+    folderUri: string | null;
+    folderName: string | null;
+  }) => void;
 }
 
 const KAWAII_BOOT_KEY = 'lbxmb.kawaiiLogo';
@@ -61,6 +78,9 @@ export const useSettingsStore = create<SettingsState>()(
       language: 'system',
       lastSeenAppVersion: null,
       kawaiiLogo: false,
+      downloadDestinationMode: 'unset',
+      downloadFolderUri: null,
+      downloadFolderName: null,
       setTheme: (theme) => set({ theme }),
       setConsent: (consent) => set({ consent, consentDate: new Date().toISOString() }),
       setCatalogueLayout: (catalogueLayout) => set({ catalogueLayout }),
@@ -78,6 +98,12 @@ export const useSettingsStore = create<SettingsState>()(
         }
         set({ kawaiiLogo });
       },
+      setDownloadDestination: ({ mode, folderUri, folderName }) =>
+        set({
+          downloadDestinationMode: mode,
+          downloadFolderUri: folderUri,
+          downloadFolderName: folderName,
+        }),
     }),
     {
       name: 'lbxmb.settings',

@@ -1,5 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import {
+  FolderOpen,
   Package,
   Radar,
   RefreshCw,
@@ -21,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useScreenTracking } from '@/hooks/useScreenTracking';
+import { formatFtpSize } from '@/services/ftp';
 import {
   PKG_SENDER_CREDIT,
   detectConsoleMode,
@@ -33,7 +35,7 @@ import {
   usePkgSenderStore,
   type PkgLocalFile,
 } from '@/services/pkgSender';
-import { formatFtpSize } from '@/services/ftp';
+import { isPkgOrDiscImage, pickDeviceFiles } from '@/services/pickDeviceFiles';
 import {
   AnimatedPressable,
   Button,
@@ -66,6 +68,7 @@ export default function PkgSenderScreen() {
   const clearFinished = usePkgSenderStore((s) => s.clearFinished);
 
   const [files, setFiles] = useState<PkgLocalFile[]>([]);
+  const [extraFiles, setExtraFiles] = useState<PkgLocalFile[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -77,6 +80,14 @@ export default function PkgSenderScreen() {
     refreshFiles();
     void pumpPkgSendQueue();
   }, [refreshFiles]);
+
+  const visibleFiles = (() => {
+    const byId = new Map<string, PkgLocalFile>();
+    for (const file of [...files, ...extraFiles]) {
+      byId.set(`${file.uri}::${file.name}`, file);
+    }
+    return [...byId.values()];
+  })();
 
   const testConsole = async () => {
     const ip = consoleIp.trim();
@@ -133,6 +144,61 @@ export default function PkgSenderScreen() {
     setStatus(t('pkg.queued', { name: file.name }));
   };
 
+  const pickFromPhone = async () => {
+    try {
+      setBusy(true);
+      const picked = await pickDeviceFiles({ multiple: true, type: '*/*' });
+      if (picked.length === 0) return;
+
+      const accepted: PkgLocalFile[] = [];
+      let rejected = 0;
+      for (const file of picked) {
+        const kind = isPkgOrDiscImage(file.name);
+        if (!kind) {
+          rejected += 1;
+          continue;
+        }
+        accepted.push({
+          id: `device-${file.uri}-${file.name}`,
+          name: file.name,
+          uri: file.uri,
+          size: file.size,
+          kind,
+        });
+      }
+
+      if (accepted.length === 0) {
+        Alert.alert(t('pkg.pickInvalidTitle'), t('pkg.pickInvalidBody'));
+        return;
+      }
+
+      setExtraFiles((prev) => [...accepted, ...prev]);
+
+      if (!consoleIp.trim()) {
+        setStatus(t('pkg.pickAdded', { count: accepted.length }));
+        if (rejected > 0) {
+          Alert.alert(t('pkg.pickPartialTitle'), t('pkg.pickPartialBody', { count: rejected }));
+        }
+        return;
+      }
+
+      for (const file of accepted) {
+        enqueuePkgSend(file);
+      }
+      setStatus(t('pkg.queuedMany', { count: accepted.length }));
+      if (rejected > 0) {
+        Alert.alert(t('pkg.pickPartialTitle'), t('pkg.pickPartialBody', { count: rejected }));
+      }
+    } catch (error) {
+      Alert.alert(
+        t('pkg.pickFailedTitle'),
+        error instanceof Error ? error.message : t('pkg.pickFailedBody'),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const bottomPad = insets.bottom + tabBarHeight + tabBarInset + spacing.xl;
 
   return (
@@ -145,8 +211,8 @@ export default function PkgSenderScreen() {
       </View>
 
       <FlatList
-        data={files}
-        keyExtractor={(item) => item.id}
+        data={visibleFiles}
+        keyExtractor={(item) => `${item.uri}::${item.name}`}
         contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
         ListHeaderComponent={
           <View style={styles.form}>
@@ -186,6 +252,17 @@ export default function PkgSenderScreen() {
                 disabled={busy}
                 size="medium"
               />
+              <Button
+                label={t('pkg.browse')}
+                onPress={() => void pickFromPhone()}
+                variant="secondary"
+                size="medium"
+                disabled={busy}
+                leading={<FolderOpen size={16} color={colors.primary} strokeWidth={2.3} />}
+              />
+            </View>
+
+            <View style={styles.actions}>
               <Button
                 label={t('pkg.refresh')}
                 onPress={refreshFiles}
@@ -264,6 +341,8 @@ export default function PkgSenderScreen() {
             icon={Package}
             title={t('pkg.emptyTitle')}
             description={t('pkg.emptyBody')}
+            actionLabel={t('pkg.browse')}
+            onAction={() => void pickFromPhone()}
           />
         }
         renderItem={({ item }) => (

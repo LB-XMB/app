@@ -1,6 +1,6 @@
 {
   "name": "lbxmb",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "main": "index.js",
   "dependencies": {
     "@anttech/react-native-ftp": "^0.2.3",
@@ -21,6 +21,7 @@
     "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.18",
     "expo-dev-client": "~57.0.19",
+    "expo-document-picker": "~57.0.2",
     "expo-file-system": "~57.0.7",
     "expo-font": "~57.0.4",
     "expo-haptics": "~57.0.3",

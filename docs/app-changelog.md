@@ -1,3 +1,9 @@
+## 1.0.13
+
+- Correctif connexion Discord / « Continuer sur le site » (`dismissBrowser` sans `.catch` sur undefined)
+- Téléchargements : explorateur Android / Fichiers iOS, dossier par défaut dans Paramètres, choix au premier DL
+- Sélection de fichiers native (DocumentPicker) pour FTP et envoi PKG
+
 ## 1.0.12
 
 - FTP natif via `@anttech/react-native-ftp` (SFTP retiré)

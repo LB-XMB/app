@@ -161,7 +161,13 @@ export async function signInWithBrowser(method: AuthMethod): Promise<AuthSuccess
       browserReturned.then(() => waitForLateApproval(challenge.token)),
     ]);
   } finally {
-    await WebBrowser.dismissBrowser().catch(() => undefined);
+    // dismissBrowser() is iOS-only; the native method may be missing and return
+    // undefined — never call .catch on a non-Promise.
+    try {
+      await Promise.resolve(WebBrowser.dismissBrowser()).catch(() => undefined);
+    } catch {
+      /* ignore */
+    }
   }
 
   const claimed = await request<ClaimResponse>('/api/auth/qr/claim', {

@@ -1,10 +1,10 @@
 import { Directory, File, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
 import { trackResourceDownload, uploadUrl } from '@/services/api';
 import type { DownloadFile, ResourceDetail } from '@/services/api';
+import { placeDownloadedFile } from '@/services/downloadDestination';
 import { useHistoryStore } from '@/stores/history';
 
 const DOWNLOAD_DIRECTORY = 'telechargements';
@@ -47,13 +47,16 @@ interface DownloadArgs {
   file: DownloadFile;
   onProgress?: (progress: DownloadProgress) => void;
   signal?: AbortSignal;
-  /** Open the system share sheet after a sandbox save. Default true. */
-  shareAfter?: boolean;
+  /**
+   * After sandbox save: copy to the default folder or open the native
+   * explorer / Fichiers sheet (see download destination settings). Default true.
+   */
+  placeAfter?: boolean;
 }
 
 /**
- * Downloads a resource file into the app sandbox, then optionally hands it to
- * the system share sheet so the user can store it wherever they want.
+ * Downloads a resource file into the app sandbox, then places it according to
+ * the user’s download-folder preference (SAF folder, or native share/Files).
  *
  * External links (GitHub releases, mirrors…) are opened in the browser instead:
  * they are not guaranteed to be direct file URLs.
@@ -63,7 +66,7 @@ export async function downloadResourceFile({
   file,
   onProgress,
   signal,
-  shareAfter = true,
+  placeAfter = true,
 }: DownloadArgs): Promise<DownloadOutcome> {
   const url = downloadUrl(file);
   if (!url) return { status: 'error', message: 'Aucun lien de téléchargement.' };
@@ -107,10 +110,9 @@ export async function downloadResourceFile({
 
     recordHistory(downloaded.size ?? file.sizeBytes);
 
-    if (shareAfter && (await Sharing.isAvailableAsync())) {
-      await Sharing.shareAsync(downloaded.uri, {
-        dialogTitle: `Enregistrer ${file.fileName}`,
-      });
+    if (placeAfter) {
+      const placed = await placeDownloadedFile(downloaded.uri, file.fileName);
+      return { status: 'saved', uri: placed.uri };
     }
 
     return { status: 'saved', uri: downloaded.uri };

@@ -285,6 +285,8 @@ function DownloadList({ resource }: { resource: ResourceDetail }) {
         <Download size={13} color={colors.textTertiary} strokeWidth={2.2} />
         <Typography variant="caption" color="tertiary" style={styles.flex}>
           Les fichiers partent en file d’attente (un à la fois). Suivi dans Téléchargements.
+          Selon tes paramètres, ils sont copiés dans ton dossier ou proposés via l’explorateur /
+          Fichiers.
         </Typography>
       </View>
     </ScrollView>

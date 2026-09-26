@@ -4,6 +4,7 @@ import {
   Bell,
   ExternalLink,
   FileLock2,
+  FolderOpen,
   HardDrive,
   Languages,
   Lock,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { canUseAppLock } from '@/components/AppLockGate';
@@ -24,6 +25,11 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { WEB_URLS } from '@/services/api';
 import { clearDownloadedFiles, downloadedBytes, formatBytes } from '@/services/download';
+import {
+  downloadDestinationSummary,
+  pickDownloadFolder,
+  setDownloadAskEachTime,
+} from '@/services/downloadDestination';
 import { ensureNotificationPermission } from '@/services/notifications';
 import { useSettingsStore, type ThemePreference } from '@/stores/settings';
 import {
@@ -71,6 +77,8 @@ export default function SettingsScreen() {
   const setLanguage = useSettingsStore((state) => state.setLanguage);
   const kawaiiLogo = useSettingsStore((state) => state.kawaiiLogo);
   const setKawaiiLogo = useSettingsStore((state) => state.setKawaiiLogo);
+  const downloadDestinationMode = useSettingsStore((state) => state.downloadDestinationMode);
+  const downloadFolderName = useSettingsStore((state) => state.downloadFolderName);
 
   const [cacheSize, setCacheSize] = useState(() => downloadedBytes());
   const [lockAvailable, setLockAvailable] = useState(false);
@@ -91,6 +99,33 @@ export default function SettingsScreen() {
           onPress: () => {
             clearDownloadedFiles();
             setCacheSize(0);
+          },
+        },
+      ]
+    );
+  };
+
+  const configureDownloadFolder = () => {
+    Alert.alert(
+      t('settings.downloadFolder'),
+      t('settings.downloadFolderPrompt'),
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: t('settings.downloadAskEachTime'),
+          onPress: () => setDownloadAskEachTime(),
+        },
+        {
+          text: t('settings.downloadPickFolder'),
+          onPress: () => {
+            void pickDownloadFolder().then((ok) => {
+              if (!ok && Platform.OS === 'android') {
+                Alert.alert(
+                  t('settings.downloadFolder'),
+                  'Aucun dossier sélectionné. Tu pourras réessayer plus tard.'
+                );
+              }
+            });
           },
         },
       ]
@@ -297,6 +332,18 @@ export default function SettingsScreen() {
         <View style={styles.group}>
           <ListSectionTitle>{t('settings.storage')}</ListSectionTitle>
           <List>
+            <List.Item
+              title={t('settings.downloadFolder')}
+              subtitle={downloadDestinationSummary(
+                downloadDestinationMode,
+                downloadFolderName
+              )}
+              leading={<IconBadge icon={FolderOpen} color={colors.primary} size={30} />}
+              trailing={
+                <ExternalLink size={15} color={colors.textTertiary} strokeWidth={2.3} />
+              }
+              onPress={configureDownloadFolder}
+            />
             <List.Item
               title={t('settings.downloadedFiles')}
               subtitle={cacheSize > 0 ? formatBytes(cacheSize) : t('settings.downloadedEmpty')}

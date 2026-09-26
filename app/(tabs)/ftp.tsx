@@ -27,6 +27,7 @@ import {
   formatFtpSize,
   type FtpEntry,
 } from '@/services/ftp';
+import { pickDeviceFiles } from '@/services/pickDeviceFiles';
 import { enqueueFtpUpload, pumpFtpUploadQueue } from '@/services/ftpUploadQueue';
 import {
   resolveFtpPassword,
@@ -230,7 +231,31 @@ function FtpScreenBody() {
     setStatus(`Ajouté à la file : ${fileName}`);
   };
 
-  const pickFromHistory = () => {
+  const pickFromPhone = async () => {
+    if (!active) return;
+    try {
+      setBusy(true);
+      const picked = await pickDeviceFiles({ multiple: true, type: '*/*' });
+      if (picked.length === 0) return;
+      for (const file of picked) {
+        queueLocalFile(file.name, file.uri);
+      }
+      setStatus(
+        picked.length === 1
+          ? `Ajouté à la file : ${picked[0]!.name}`
+          : `${picked.length} fichiers ajoutés à la file`,
+      );
+    } catch (error) {
+      Alert.alert(
+        'Sélection impossible',
+        error instanceof Error ? error.message : 'Impossible d’ouvrir l’explorateur de fichiers.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pickFromAppDownloads = () => {
     if (!active) return;
     const local = listLocalDownloads();
     const choices: { label: string; run: () => void }[] = [
@@ -258,7 +283,7 @@ function FtpScreenBody() {
               } catch (error) {
                 Alert.alert(
                   'Téléchargement impossible',
-                  error instanceof Error ? error.message : 'Le fichier n’est plus disponible.'
+                  error instanceof Error ? error.message : 'Le fichier n’est plus disponible.',
                 );
               } finally {
                 setBusy(false);
@@ -271,17 +296,31 @@ function FtpScreenBody() {
     if (choices.length === 0) {
       Alert.alert(
         'Aucun fichier local',
-        'Télécharge d’abord une ressource depuis le catalogue pour pouvoir l’envoyer à la console.'
+        'Télécharge d’abord une ressource depuis le catalogue, ou choisis « Fichiers du téléphone ».',
       );
       return;
     }
 
-    Alert.alert('Choisir un fichier', 'Ajoute à la file d’envoi FTP :', [
+    Alert.alert('Téléchargements LB’XMB', 'Ajoute à la file d’envoi FTP :', [
       ...choices.slice(0, 5).map((choice) => ({
         text: choice.label,
         onPress: choice.run,
       })),
       { text: 'Annuler', style: 'cancel' as const },
+    ]);
+  };
+
+  const pickUploadSource = () => {
+    Alert.alert('Envoyer un fichier', 'D’où vient le fichier ?', [
+      {
+        text: 'Fichiers du téléphone',
+        onPress: () => void pickFromPhone(),
+      },
+      {
+        text: 'Téléchargements LB’XMB',
+        onPress: pickFromAppDownloads,
+      },
+      { text: 'Annuler', style: 'cancel' },
     ]);
   };
 
@@ -445,7 +484,7 @@ function FtpScreenBody() {
               <RefreshCw size={16} color={colors.text} strokeWidth={2.4} />
             </AnimatedPressable>
             <AnimatedPressable
-              onPress={pickFromHistory}
+              onPress={pickUploadSource}
               disabled={busy}
               scale={0.92}
               style={[

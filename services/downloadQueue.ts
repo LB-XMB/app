@@ -1,5 +1,6 @@
 import type { DownloadFile } from '@/services/api';
 import { downloadResourceFile } from '@/services/download';
+import { ensureDownloadDestinationReady } from '@/services/downloadDestination';
 import {
   ensureNotificationPermission,
   notifyDownloadDone,
@@ -40,7 +41,7 @@ export async function pumpDownloadQueue(): Promise<void> {
         resource: next.resource,
         file: next.file,
         signal: controller.signal,
-        shareAfter: false,
+        placeAfter: true,
         onProgress: ({ ratio }) => {
           useDownloadQueueStore.getState().updateJob(next.id, { progress: ratio });
         },
@@ -78,11 +79,17 @@ export async function pumpDownloadQueue(): Promise<void> {
   }
 }
 
-/** Enqueue a file and start the worker. */
+/**
+ * Prompts for a download destination if needed, then enqueues the file.
+ * Returns `null` when the user cancels the first-time destination prompt.
+ */
 export async function enqueueDownload(
   resource: DownloadJobResource,
   file: DownloadFile
-): Promise<string> {
+): Promise<string | null> {
+  const ready = await ensureDownloadDestinationReady();
+  if (!ready) return null;
+
   if (useSettingsStore.getState().downloadNotifications) {
     void ensureNotificationPermission();
   }
