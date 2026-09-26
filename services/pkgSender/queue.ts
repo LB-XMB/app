@@ -280,17 +280,6 @@ export async function pumpPkgSendQueue(): Promise<void> {
           });
           pkgDebug(`GoldHEN reply ok=${result.ok} ${result.reply}`);
           if (!result.ok) throw new Error(result.reply);
-          // Self-check: phone must be able to serve /pkg/pkg (sanity for BGFT).
-          try {
-            const head = await fetch(url, { method: 'HEAD' });
-            pkgDebug(
-              `self HEAD ${url} → ${head.status} len=${head.headers.get('content-length') ?? '?'}`,
-            );
-          } catch (e) {
-            pkgDebug(
-              `self HEAD fail: ${e instanceof Error ? e.message : String(e)} (console may still reach us)`,
-            );
-          }
         } else {
           pkgDebug(`RPI/receiver install…`);
           const result = await pushInstall({

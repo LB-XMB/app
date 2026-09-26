@@ -1,5 +1,10 @@
 /** Keep in sync with `docs/app-changelog.md`. */
-export const APP_CHANGELOG_MD = `## 1.0.18
+export const APP_CHANGELOG_MD = `## 1.0.19
+
+- Retire le panneau Debug PKG temporaire
+- Lectures SAF `content://` sérialisées (moins de Bad file descriptor sous Range paralleles)
+
+## 1.0.18
 
 - PKG GoldHEN : attendre 100 % + grace 60 s avant revoke (fini les 404 / « Téléchargement impossible » à ~98 %)
 - Reopen SAF si Bad file descriptor ; logs HTTP moins verbeux

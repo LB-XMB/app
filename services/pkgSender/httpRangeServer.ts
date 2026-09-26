@@ -14,11 +14,9 @@ type Registered = {
  * Minimal LAN HTTP server with Range (206) support.
  * Protocol shape matches pkg-sender's RangeFileServer (Loopayeh, MIT).
  *
- * Reads are streamed via FileHandle (seek + chunked readBytes) — never
- * `File.slice` / `bytesSync`, which load the whole multi‑GB PKG into RAM.
- *
- * All responses await socket.write drain before destroy — otherwise RN TCP
- * can truncate small JSON manifests and BGFT never starts the PKG download.
+ * content:// (SAF) reads are serialized: opening several FileHandles on the
+ * same Downloads document races and yields « Bad file descriptor ».
+ * file:// stays concurrent.
  */
 class HttpRangeServer {
   private server: TcpSocket.Server | null = null;
@@ -27,7 +25,8 @@ class HttpRangeServer {
   private servedById = new Map<string, number>();
   private port = FILE_SERVER_PORT;
   private onServed: ((id: string, total: number) => void) | null = null;
-  private connSeq = 0;
+  /** Chain of SAF reads — only one content:// handle open at a time. */
+  private safTail: Promise<void> = Promise.resolve();
 
   setProgressListener(fn: ((id: string, total: number) => void) | null) {
     this.onServed = fn;
@@ -36,7 +35,6 @@ class HttpRangeServer {
   registerFile(id: string, uri: string, size: number, mime = 'application/octet-stream') {
     this.files.set(id, { uri, size, mime });
     this.servedById.set(id, 0);
-    this.servedById.set(`_req_${id}`, 0);
   }
 
   registerManifest(id: string, json: string) {
@@ -57,15 +55,6 @@ class HttpRangeServer {
 
     return new Promise((resolve, reject) => {
       const server = TcpSocket.createServer((socket) => {
-        const n = ++this.connSeq;
-        if (n <= 3 || n % 25 === 0) {
-          try {
-            const remote = `${(socket as { remoteAddress?: string }).remoteAddress ?? '?'}:${(socket as { remotePort?: number }).remotePort ?? '?'}`;
-            pkgDebug(`HTTP accept #${n} from ${remote}`);
-          } catch {
-            pkgDebug(`HTTP accept #${n}`);
-          }
-        }
         void this.handleClient(socket);
       });
 
@@ -137,21 +126,17 @@ class HttpRangeServer {
     const rangeHeader = header
       .split('\r\n')
       .find((line) => line.toLowerCase().startsWith('range:'));
-    pkgDebug(`HTTP ${method} ${path}${rangeHeader ? ' +Range' : ''}`);
 
     if (path.startsWith('/json/') && path.endsWith('.json')) {
       const id = path.slice('/json/'.length, -'.json'.length);
       const json = this.manifests.get(id);
       if (!json) {
-        pkgDebug(`manifest 404 id=${id}`);
         await this.writeClose(socket, 'HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
         return;
       }
       const body = Buffer.from(json, 'utf8');
-      // Header order matches pkg-sender (no CORS on manifest — BGFT is picky).
       const head =
         `HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n`;
-      pkgDebug(`manifest 200 ${body.length} o · ${json.slice(0, 120)}…`);
       if (method === 'HEAD') {
         await this.writeClose(socket, head);
         return;
@@ -186,7 +171,6 @@ class HttpRangeServer {
     else if (path.startsWith('/pkg/')) id = path.slice('/pkg/'.length);
 
     if (!id || !this.files.has(id)) {
-      pkgDebug(`pkg 404 path=${path}`);
       await this.writeClose(socket, 'HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
       return;
     }
@@ -199,7 +183,6 @@ class HttpRangeServer {
     if (rangeHeader) {
       const m = /bytes=(\d*)-(\d*)/i.exec(rangeHeader);
       if (m) {
-        // Suffix form: bytes=-N (last N bytes) — used by some BGFT clients.
         if (!m[1] && m[2]) {
           const suffix = Number(m[2]);
           if (Number.isFinite(suffix) && suffix > 0) {
@@ -231,7 +214,6 @@ class HttpRangeServer {
     }
 
     const length = end - start + 1;
-    // Header order matches pkg-sender RangeFileServer (BGFT is picky).
     const statusLine = status === 206 ? 'HTTP/1.1 206 Partial Content' : 'HTTP/1.1 200 OK';
     let headers = `${statusLine}\r\n`;
     if (status === 206) {
@@ -241,15 +223,6 @@ class HttpRangeServer {
     headers += `Content-Length: ${length}\r\n`;
     headers += `Accept-Ranges: bytes\r\n`;
     headers += `Connection: close\r\n\r\n`;
-
-    // Log first ranges + every 40th to avoid flooding the debug panel mid-transfer.
-    const rangeN = (this.servedById.get(`_req_${id}`) ?? 0) + 1;
-    this.servedById.set(`_req_${id}`, rangeN);
-    if (rangeN <= 5 || rangeN % 40 === 0 || status !== 206) {
-      pkgDebug(
-        `pkg ${status === 206 ? '206' : '200'} #${rangeN} ${id} bytes=${start}-${end}/${file.size}`,
-      );
-    }
     await this.writeBytes(socket, headers);
 
     if (method === 'HEAD') {
@@ -261,7 +234,6 @@ class HttpRangeServer {
     socket.destroy();
   }
 
-  /** Write UTF-8 text, wait for drain. */
   private writeBytes(socket: TcpSocket.Socket, data: string | Buffer): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
@@ -274,7 +246,6 @@ class HttpRangeServer {
     });
   }
 
-  /** Write response then close — never destroy before drain (truncates RN TCP). */
   private async writeClose(
     socket: TcpSocket.Socket,
     head: string,
@@ -295,7 +266,35 @@ class HttpRangeServer {
     }
   }
 
+  /** Run fn alone if uri is content:// (SAF cannot share handles safely). */
+  private async withSafLock<T>(uri: string, fn: () => Promise<T>): Promise<T> {
+    if (!uri.startsWith('content://')) return fn();
+
+    let release!: () => void;
+    const next = new Promise<void>((r) => {
+      release = r;
+    });
+    const prev = this.safTail;
+    this.safTail = next;
+    await prev;
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  }
+
   private async writeFileRange(
+    socket: TcpSocket.Socket,
+    uri: string,
+    start: number,
+    end: number,
+    id: string,
+  ) {
+    await this.withSafLock(uri, () => this.writeFileRangeUnlocked(socket, uri, start, end, id));
+  }
+
+  private async writeFileRangeUnlocked(
     socket: TcpSocket.Socket,
     uri: string,
     start: number,
@@ -305,7 +304,6 @@ class HttpRangeServer {
     const chunkSize = 256 * 1024;
     let offset = start;
     let reopenLeft = 3;
-    let firstChunk = true;
 
     while (offset <= end) {
       const file = new File(uri);
@@ -328,22 +326,17 @@ class HttpRangeServer {
             const msg = error instanceof Error ? error.message : String(error);
             if (/Bad file descriptor|readBytes|file handle/i.test(msg) && reopenLeft > 0) {
               reopenLeft -= 1;
-              pkgDebug(`SAF reopen offset=${offset} left=${reopenLeft} (${msg.slice(0, 60)})`);
-              break; // close + reopen outer loop
+              break;
             }
             throw error;
           }
           if (buf.byteLength === 0) return;
-          if (firstChunk) {
-            pkgDebug(`pkg stream start offset=${start} first=${buf.byteLength} o`);
-            firstChunk = false;
-          }
           await this.writeBytes(socket, Buffer.from(buf));
           const served = (this.servedById.get(id) ?? 0) + buf.byteLength;
           this.servedById.set(id, served);
           this.onServed?.(id, served);
           offset += buf.byteLength;
-          reopenLeft = 3; // healthy reads reset reopen budget
+          reopenLeft = 3;
         }
       } finally {
         if (handle) {
@@ -357,4 +350,5 @@ class HttpRangeServer {
     }
   }
 }
+
 export const httpRangeServer = new HttpRangeServer();

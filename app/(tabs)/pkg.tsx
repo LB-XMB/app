@@ -12,9 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   TextInput,
@@ -27,7 +25,6 @@ import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { formatFtpSize } from '@/services/ftp';
 import {
   PKG_SENDER_CREDIT,
-  clearPkgDebug,
   detectConsoleMode,
   diagnoseConsole,
   enqueuePkgSend,
@@ -36,7 +33,6 @@ import {
   listLocalPkgFiles,
   pumpPkgSendQueue,
   retryPkgSend,
-  subscribePkgDebug,
   usePkgSenderStore,
   type PkgLocalFile,
 } from '@/services/pkgSender';
@@ -79,7 +75,6 @@ export default function PkgSenderScreen() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [detectedLanIp, setDetectedLanIp] = useState<string | null>(null);
-  const [debugLines, setDebugLines] = useState<string[]>([]);
 
   const refreshFiles = useCallback(() => {
     setFiles(listLocalPkgFiles());
@@ -89,7 +84,6 @@ export default function PkgSenderScreen() {
     refreshFiles();
     void pumpPkgSendQueue();
     void getLanIp().then(setDetectedLanIp);
-    return subscribePkgDebug(setDebugLines);
   }, [refreshFiles]);
 
   const visibleFiles = (() => {
@@ -376,38 +370,6 @@ export default function PkgSenderScreen() {
               </View>
             ) : null}
 
-            <View style={[styles.debugBox, { backgroundColor: colors.item, borderColor: colors.border }]}>
-              <View style={styles.queueHead}>
-                <Typography variant="captionStrong">Debug PKG (temporaire)</Typography>
-                <Pressable onPress={clearPkgDebug}>
-                  <Typography variant="caption" color="primary">
-                    Effacer
-                  </Typography>
-                </Pressable>
-              </View>
-              <ScrollView style={styles.debugScroll} nestedScrollEnabled>
-                {debugLines.length === 0 ? (
-                  <Typography variant="caption" color="tertiary">
-                    Les étapes GoldHEN / HTTP apparaissent ici à l’envoi.
-                  </Typography>
-                ) : (
-                  debugLines
-                    .slice()
-                    .reverse()
-                    .map((line, index) => (
-                      <Typography
-                        key={`${index}-${line.slice(0, 12)}`}
-                        variant="caption"
-                        color="secondary"
-                        style={styles.debugLine}
-                      >
-                        {line}
-                      </Typography>
-                    ))
-                )}
-              </ScrollView>
-            </View>
-
             <Typography variant="title" style={{ marginTop: spacing.md }}>
               {t('pkg.localFiles')}
             </Typography>
@@ -510,22 +472,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  debugBox: {
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderRadius: radius.md,
-    borderCurve: 'continuous',
-    padding: spacing.md,
-    gap: spacing.sm,
-    maxHeight: 220,
-  },
-  debugScroll: {
-    maxHeight: 160,
-  },
-  debugLine: {
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-    fontSize: 11,
-    marginBottom: 2,
   },
   fileRow: {
     flexDirection: 'row',
