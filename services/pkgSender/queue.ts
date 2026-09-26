@@ -11,6 +11,7 @@ import {
 import { pushGoldHen } from './goldhen';
 import { httpRangeServer } from './httpRangeServer';
 import { getLanIp } from './lanIp';
+import { readPkgMeta } from './pkgMeta';
 import { recoverPkgQueueAfterCrash, usePkgSenderStore } from './store';
 import type { PkgLocalFile } from './types';
 import { FILE_SERVER_PORT } from './types';
@@ -151,14 +152,31 @@ export async function pumpPkgSendQueue(): Promise<void> {
         }
 
         if (mode === 'goldhen') {
-          const man = buildGoldHenManifest(url, size);
+          const meta = await readPkgMeta(
+            next.localUri,
+            size,
+            next.fileName.replace(/\.pkg$/i, '')
+          );
+          const pkgSize = meta.packageSize > 0 ? meta.packageSize : size;
+          if (!meta.digest) {
+            throw new Error(
+              'Digest PKG introuvable — le fichier est peut‑être corrompu ou inaccessible.'
+            );
+          }
+          // Manifest must use real packageDigest (CNT+0xFE0); empty digest → BGFT errors.
+          const man = buildGoldHenManifest(url, pkgSize, meta.digest);
           httpRangeServer.registerManifest(next.id, man);
+          // Keep registered size in sync with meta (picker size can be 0).
+          httpRangeServer.registerFile(next.id, next.localUri, pkgSize, mime);
           const result = await pushGoldHen({
             consoleIp,
             lanIp,
             manifestUrl: manifestUrl(lanIp, next.id),
-            title: next.fileName.replace(/\.pkg$/i, ''),
-            packageSize: size,
+            title: meta.title || next.fileName.replace(/\.pkg$/i, ''),
+            contentId: meta.contentId,
+            titleId: meta.titleId,
+            contentType: meta.contentType,
+            packageSize: pkgSize,
           });
           if (!result.ok) throw new Error(result.reply);
         } else {

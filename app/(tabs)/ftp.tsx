@@ -15,6 +15,7 @@ import {
   Alert,
   FlatList,
   StyleSheet,
+  Switch,
   TextInput,
   View,
 } from 'react-native';
@@ -25,6 +26,7 @@ import {
   FtpClient,
   FtpError,
   formatFtpSize,
+  sortFtpEntries,
   type FtpEntry,
 } from '@/services/ftp';
 import { pickDeviceFiles } from '@/services/pickDeviceFiles';
@@ -106,6 +108,8 @@ function FtpScreenBody() {
   const upsertProfile = useFtpStore((state) => state.upsertProfile);
   const setPasswordDraft = useFtpStore((state) => state.setPasswordDraft);
   const uploadQueue = useFtpStore((state) => state.uploadQueue);
+  const sortDirsFirst = useFtpStore((state) => state.sortDirsFirst);
+  const setSortDirsFirst = useFtpStore((state) => state.setSortDirsFirst);
   const history = useHistoryStore((state) => state.downloads);
 
   const [client, setClient] = useState<FtpClient | null>(null);
@@ -137,7 +141,8 @@ function FtpScreenBody() {
       setStatus('Lecture du dossier…');
       try {
         const listed = await nextClient.list(nextPath);
-        setEntries(listed);
+        const dirsFirst = useFtpStore.getState().sortDirsFirst;
+        setEntries(sortFtpEntries(listed, dirsFirst));
         setPath(nextPath);
         patchActive({ lastPath: nextPath });
         setStatus(`${listed.length} élément${listed.length > 1 ? 's' : ''}`);
@@ -497,6 +502,21 @@ function FtpScreenBody() {
             </AnimatedPressable>
           </View>
 
+          <View style={styles.sortRow}>
+            <Typography variant="caption" color="secondary" style={{ flex: 1 }}>
+              Dossiers d’abord (comme FileZilla)
+            </Typography>
+            <Switch
+              value={sortDirsFirst}
+              onValueChange={(value) => {
+                setSortDirsFirst(value);
+                setEntries((current) => sortFtpEntries(current, value));
+              }}
+              trackColor={{ true: colors.primary, false: colors.border }}
+              thumbColor={colors.onPrimary}
+            />
+          </View>
+
           {pendingUploads.length > 0 ? (
             <Typography
               variant="caption"
@@ -670,6 +690,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    paddingHorizontal: screenPadding,
+    paddingBottom: spacing.md,
+  },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     paddingHorizontal: screenPadding,
     paddingBottom: spacing.md,
   },

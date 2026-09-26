@@ -73,6 +73,8 @@ export async function pushGoldHen(opts: {
   /** Manifest URL (not raw PKG). */
   manifestUrl: string;
   title: string;
+  /** Full CONTENT_ID (e.g. UP9000-CUSA…_00-…) — required by BGFT. */
+  contentId?: string;
   titleId?: string;
   packageSize: number;
   contentType?: string;
@@ -171,8 +173,9 @@ export async function pushGoldHen(opts: {
     if (!cat.startsWith('PS4')) cat = cat.length === 0 ? 'PS4GD' : `PS4${cat}`;
 
     const urlB = Buffer.from(opts.manifestUrl, 'utf8');
-    const nameB = Buffer.from(opts.title || opts.titleId || 'PKG', 'utf8');
-    const idB = Buffer.from(opts.titleId ?? '', 'utf8');
+    const nameB = Buffer.from(opts.title || opts.contentId || opts.titleId || 'PKG', 'utf8');
+    // DPI / pkg-sender send CONTENT_ID here — TitleId alone causes BGFT errors.
+    const idB = Buffer.from(opts.contentId ?? '', 'utf8');
     const typeB = Buffer.from(cat, 'utf8');
     const sizeB = Buffer.alloc(8);
     // package size as little-endian int64 low/high — pkg-sender uses BitConverter on long (8 bytes LE)

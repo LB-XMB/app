@@ -7,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
 
 import { useSettingsStore } from '@/stores/settings';
-import { Typography } from '@/ui/components';
 import { spacing, tabBarInset, useTheme } from '@/ui/theme';
 
 import { TabBarGlass } from './TabBarGlass';
@@ -57,18 +56,10 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             }}
           >
             <Icon
-              size={22}
+              size={24}
               color={isFocused ? colors.primary : colors.textSecondary}
               strokeWidth={isFocused ? 2.4 : 2}
             />
-            <Typography
-              variant="label"
-              color={isFocused ? 'primary' : 'tertiary'}
-              style={styles.label}
-              numberOfLines={1}
-            >
-              {label}
-            </Typography>
           </Pressable>
         );
       })}
@@ -115,17 +106,12 @@ const styles = StyleSheet.create({
   },
   track: {
     flexDirection: 'row',
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    paddingVertical: 2,
-  },
-  label: {
-    fontSize: 11,
-    letterSpacing: 0.3,
+    paddingVertical: 4,
   },
 });

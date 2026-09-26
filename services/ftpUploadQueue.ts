@@ -1,4 +1,5 @@
 import FtpService, { addProgressListener, makeProgressToken } from '@anttech/react-native-ftp';
+import { File } from 'expo-file-system';
 
 import { FtpClient } from '@/services/ftp';
 import { ensureLocalFileUri } from '@/services/pickDeviceFiles';
@@ -42,8 +43,11 @@ export async function pumpFtpUploadQueue(): Promise<void> {
       });
 
       let localUri = next.localUri;
+      let staged = false;
       try {
-        localUri = await ensureLocalFileUri(next.localUri, next.fileName);
+        const prepared = await ensureLocalFileUri(next.localUri, next.fileName);
+        staged = prepared !== next.localUri;
+        localUri = prepared;
       } catch (error) {
         useFtpStore.getState().updateUpload(next.id, {
           status: 'error',
@@ -81,6 +85,14 @@ export async function pumpFtpUploadQueue(): Promise<void> {
         });
       } finally {
         unsub();
+        if (staged) {
+          try {
+            const file = new File(localUri);
+            if (file.exists) file.delete();
+          } catch {
+            /* ignore */
+          }
+        }
       }
     }
   } finally {

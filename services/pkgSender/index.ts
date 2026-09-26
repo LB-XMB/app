@@ -1,3 +1,5 @@
+export { readPkgMeta } from './pkgMeta';
+export type { PkgMeta } from './pkgMeta';
 export { PKG_SENDER_CREDIT, FILE_SERVER_PORT, RECEIVER_PORT } from './types';
 export type { ConsoleMode, PkgLocalFile, PkgSendJob } from './types';
 export { getLanIp } from './lanIp';

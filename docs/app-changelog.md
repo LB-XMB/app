@@ -1,3 +1,10 @@
+## 1.0.15
+
+- GoldHEN / BGFT : digest PKG + CONTENT_ID dans le manifeste (corrige DPI BGFT Error)
+- Plus de copie multi‑Go dans le dcache ; purge DocumentPicker / staging au démarrage
+- FTP : tri type FileZilla (dossiers d’abord) + toggle
+- Navbar : icônes seules (sans labels)
+
 ## 1.0.14
 
 - Envoi PKG multi‑Go : plus de copie cache à la sélection, lecture HTTP par morceaux (évite écran noir / OOM)

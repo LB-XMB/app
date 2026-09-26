@@ -137,6 +137,22 @@ function listingToEntries(listing: FileInfo[], basePath: string): FtpEntry[] {
     .filter((entry): entry is FtpEntry => entry !== null);
 }
 
+/**
+ * FileZilla-style order: directories first (optional), then name A→Z
+ * case-insensitive with natural numeric compare (`file2` before `file10`).
+ */
+export function sortFtpEntries(entries: FtpEntry[], dirsFirst = true): FtpEntry[] {
+  return [...entries].sort((a, b) => {
+    if (dirsFirst && a.isDirectory !== b.isDirectory) {
+      return a.isDirectory ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name, undefined, {
+      sensitivity: 'base',
+      numeric: true,
+    });
+  });
+}
+
 /** Facade kept as `FtpClient` for existing UI imports. */
 export class FtpClient implements RemoteClient {
   private connected = false;

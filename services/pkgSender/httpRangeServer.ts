@@ -179,11 +179,21 @@ class HttpRangeServer {
     if (rangeHeader) {
       const m = /bytes=(\d*)-(\d*)/i.exec(rangeHeader);
       if (m) {
-        if (m[1]) start = Number(m[1]);
-        if (m[2]) end = Number(m[2]);
-        if (!Number.isFinite(start)) start = 0;
-        if (!Number.isFinite(end) || end >= file.size) end = file.size - 1;
-        status = 206;
+        // Suffix form: bytes=-N (last N bytes) — used by some BGFT clients.
+        if (!m[1] && m[2]) {
+          const suffix = Number(m[2]);
+          if (Number.isFinite(suffix) && suffix > 0) {
+            start = Math.max(0, file.size - suffix);
+            end = file.size - 1;
+            status = 206;
+          }
+        } else {
+          if (m[1]) start = Number(m[1]);
+          if (m[2]) end = Number(m[2]);
+          if (!Number.isFinite(start)) start = 0;
+          if (!Number.isFinite(end) || end >= file.size) end = file.size - 1;
+          status = 206;
+        }
       }
     }
 

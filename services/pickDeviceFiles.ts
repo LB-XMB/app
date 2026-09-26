@@ -9,21 +9,20 @@ export interface PickedDeviceFile {
   mimeType: string | null;
 }
 
+/** Never stage multi‑GB PKG/ISO into the app cache (fills dcache / black screen). */
+export const MAX_CACHE_STAGING_BYTES = 48 * 1024 * 1024; // 48 Mo
+
+const STAGING_DIR = 'device-staging';
+const DOCUMENT_PICKER_DIR = 'DocumentPicker';
+
 /**
  * Opens the native Android / iOS document picker.
- *
- * Default: **no** copy into the app cache. Copying a multi‑GB PKG freezes /
- * OOM the app (black screen). PKG reads the picker URI (`content://`) directly.
+ * Always without copying into the app cache — multi‑GB PKG stay as content://.
  */
 export async function pickDeviceFiles(options?: {
   multiple?: boolean;
   /** MIME types; defaults to any file. */
   type?: string | string[];
-  /**
-   * Force a cache copy. Prefer `false` for large PKG/ISO.
-   * @default false
-   */
-  copyToCacheDirectory?: boolean;
 }): Promise<PickedDeviceFile[]> {
   if (Platform.OS === 'web') {
     throw new Error('Sélection de fichiers indisponible sur le web.');
@@ -31,7 +30,8 @@ export async function pickDeviceFiles(options?: {
 
   const result = await DocumentPicker.getDocumentAsync({
     type: options?.type ?? '*/*',
-    copyToCacheDirectory: options?.copyToCacheDirectory ?? false,
+    // Hard forbid cache copies — a 3–5 Go PKG filled dcache previously.
+    copyToCacheDirectory: false,
     multiple: options?.multiple ?? true,
   });
 
@@ -57,15 +57,47 @@ export async function pickDeviceFiles(options?: {
   });
 }
 
+function isAlreadyLocalPath(uri: string): boolean {
+  return uri.startsWith('file://') || uri.startsWith('/');
+}
+
 /**
- * Native FTP needs a real filesystem path. Materialize `content://` (etc.)
- * into the cache via a native stream copy — not a JS base64 load.
+ * Native FTP needs a real filesystem path.
+ * - file:// → as-is
+ * - content:// small files → optional stream copy into cache (≤ 48 Mo)
+ * - content:// large files → refuse (never fill dcache with PKG)
  */
-export async function ensureLocalFileUri(uri: string, fileName: string): Promise<string> {
-  if (uri.startsWith('file://') || uri.startsWith('/')) return uri;
+export async function ensureLocalFileUri(
+  uri: string,
+  fileName: string,
+  knownSize = 0
+): Promise<string> {
+  if (isAlreadyLocalPath(uri)) return uri;
+
+  let size = knownSize;
+  if (size <= 0) {
+    try {
+      size = new File(uri).size ?? 0;
+    } catch {
+      size = 0;
+    }
+  }
+
+  if (size > MAX_CACHE_STAGING_BYTES) {
+    throw new Error(
+      'Fichier trop volumineux pour le cache de l’app. Utilise « Depuis les téléchargements » ou l’onglet PKG (lecture directe, sans copie).'
+    );
+  }
+
+  // Unknown size on content:// — still refuse blind multi‑GB copies.
+  if (size <= 0) {
+    throw new Error(
+      'Impossible de préparer ce fichier sans le copier. Choisis-le depuis le dossier téléchargements de l’app.'
+    );
+  }
 
   const safe = fileName.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'fichier';
-  const dir = new Directory(Paths.cache, 'device-staging');
+  const dir = new Directory(Paths.cache, STAGING_DIR);
   if (!dir.exists) dir.create({ intermediates: true });
   const dest = new File(dir, safe);
   if (dest.exists) {
@@ -77,6 +109,35 @@ export async function ensureLocalFileUri(uri: string, fileName: string): Promise
   }
   await new File(uri).copy(dest);
   return dest.uri;
+}
+
+/** Wipe DocumentPicker + device-staging leftovers under the app cache. */
+export function clearDeviceFileCache(): number {
+  if (Platform.OS === 'web') return 0;
+  let freed = 0;
+  for (const name of [STAGING_DIR, DOCUMENT_PICKER_DIR]) {
+    try {
+      const directory = new Directory(Paths.cache, name);
+      if (!directory.exists) continue;
+      freed += directorySize(directory);
+      directory.delete();
+    } catch {
+      /* ignore */
+    }
+  }
+  return freed;
+}
+
+function directorySize(directory: Directory): number {
+  try {
+    return directory.list().reduce((total, entry) => {
+      if (entry instanceof File) return total + (entry.size ?? 0);
+      if (entry instanceof Directory) return total + directorySize(entry);
+      return total;
+    }, 0);
+  } catch {
+    return 0;
+  }
 }
 
 const PKG_EXT = ['.pkg'];

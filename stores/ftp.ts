@@ -39,11 +39,17 @@ interface FtpState {
   uploadQueue: FtpUploadJob[];
   /** Transient password fields keyed by profile id (not persisted). */
   passwordDrafts: Record<string, string>;
+  /**
+   * FileZilla-like listing: directories first, then A→Z.
+   * Off = pure alphabetical (dirs mixed with files).
+   */
+  sortDirsFirst: boolean;
   setActiveProfileId: (id: string | null) => void;
   upsertProfile: (profile: FtpProfile) => void;
   removeProfile: (id: string) => void;
   patchActive: (patch: Partial<Omit<FtpProfile, 'id'>>) => void;
   setPasswordDraft: (profileId: string, password: string) => void;
+  setSortDirsFirst: (value: boolean) => void;
   enqueueUpload: (job: Omit<FtpUploadJob, 'id' | 'status' | 'error' | 'createdAt'>) => string;
   updateUpload: (id: string, patch: Partial<FtpUploadJob>) => void;
   retryUpload: (id: string) => void;
@@ -100,6 +106,7 @@ export const useFtpStore = create<FtpState>()(
       activeProfileId: null,
       uploadQueue: [],
       passwordDrafts: {},
+      sortDirsFirst: true,
       setActiveProfileId: (activeProfileId) => set({ activeProfileId }),
       upsertProfile: (profile) =>
         set((state) => {
@@ -139,6 +146,7 @@ export const useFtpStore = create<FtpState>()(
         set((state) => ({
           passwordDrafts: { ...state.passwordDrafts, [profileId]: password },
         })),
+      setSortDirsFirst: (sortDirsFirst) => set({ sortDirsFirst }),
       enqueueUpload: (job) => {
         const id = `up-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const entry: FtpUploadJob = {
@@ -181,12 +189,14 @@ export const useFtpStore = create<FtpState>()(
         profiles: state.profiles,
         activeProfileId: state.activeProfileId,
         uploadQueue: sanitizeRunningJobs(state.uploadQueue),
+        sortDirsFirst: state.sortDirsFirst,
       }),
       merge: (persisted, current) => {
         const raw = persisted as {
           profiles?: FtpProfile[];
           activeProfileId?: string | null;
           uploadQueue?: FtpUploadJob[];
+          sortDirsFirst?: boolean;
           /** Legacy single-target shape from pre-P1.4. */
           target?: {
             host?: string;
@@ -237,6 +247,7 @@ export const useFtpStore = create<FtpState>()(
           ...current,
           profiles,
           activeProfileId,
+          sortDirsFirst: raw?.sortDirsFirst ?? current.sortDirsFirst,
           uploadQueue: sanitizeRunningJobs(raw?.uploadQueue ?? [], { error: null }),
           passwordDrafts: {},
         };

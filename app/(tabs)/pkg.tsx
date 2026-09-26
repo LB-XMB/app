@@ -152,7 +152,6 @@ export default function PkgSenderScreen() {
       const picked = await pickDeviceFiles({
         multiple: true,
         type: '*/*',
-        copyToCacheDirectory: false,
       });
       if (picked.length === 0) {
         setStatus(null);

@@ -30,6 +30,7 @@ import {
   pickDownloadFolder,
   setDownloadAskEachTime,
 } from '@/services/downloadDestination';
+import { clearDeviceFileCache } from '@/services/pickDeviceFiles';
 import { ensureNotificationPermission } from '@/services/notifications';
 import { useSettingsStore, type ThemePreference } from '@/stores/settings';
 import {
@@ -90,7 +91,7 @@ export default function SettingsScreen() {
   const clearCache = () => {
     Alert.alert(
       'Supprimer les fichiers ?',
-      'Les fichiers téléchargés dans l’app seront effacés. L’historique est conservé.',
+      'Les fichiers téléchargés et le cache temporaire (DocumentPicker / staging) seront effacés. L’historique est conservé.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -98,6 +99,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: () => {
             clearDownloadedFiles();
+            clearDeviceFileCache();
             setCacheSize(0);
           },
         },

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { pumpDownloadQueue } from '@/services/downloadQueue';
 import { pumpFtpUploadQueue } from '@/services/ftpUploadQueue';
+import { clearDeviceFileCache } from '@/services/pickDeviceFiles';
 import { pumpPkgSendQueue, recoverPkgQueueAfterCrash } from '@/services/pkgSender';
 import { recoverDownloadQueueAfterCrash } from '@/stores/downloadQueue';
 import { recoverFtpUploadQueueAfterCrash } from '@/stores/ftp';
@@ -16,6 +17,8 @@ export function QueueBootstrap() {
 
     const run = () => {
       if (cancelled) return;
+      // Drop leftover multi‑GB DocumentPicker / FTP staging copies from dcache.
+      clearDeviceFileCache();
       recoverDownloadQueueAfterCrash();
       recoverFtpUploadQueueAfterCrash();
       recoverPkgQueueAfterCrash();
