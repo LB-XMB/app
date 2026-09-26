@@ -42,10 +42,16 @@ const config: ExpoConfig = {
       CFBundleDisplayName: "LB'XMB",
       ITSAppUsesNonExemptEncryption: false,
       UIViewControllerBasedStatusBarAppearance: true,
-      // The app never opens a local server, only https endpoints.
-      NSAppTransportSecurity: { NSAllowsArbitraryLoads: false },
+      // HTTPS for lbxmb.fr; local LAN HTTP allowed for FTP / PKG install.
+      NSAppTransportSecurity: {
+        NSAllowsArbitraryLoads: false,
+        NSAllowsLocalNetworking: true,
+      },
       NSFaceIDUsageDescription:
         'LB’XMB utilise Face ID pour déverrouiller l’application lorsque le verrouillage est activé.',
+      NSLocalNetworkUsageDescription:
+        'LB’XMB découvre ta console PS4/PS5 sur le réseau local pour l’envoi de PKG et le FTP.',
+      NSBonjourServices: ['_pkgsender._udp'],
     },
   },
   android: {
@@ -57,9 +63,13 @@ const config: ExpoConfig = {
     },
     // Downloads land in the app sandbox and are handed to the share sheet, so
     // no storage or media permission is needed.
+    // Cleartext (LAN HTTP/FTP) is enabled via expo-build-properties.
     permissions: [
       'android.permission.INTERNET',
       'android.permission.POST_NOTIFICATIONS',
+      'android.permission.ACCESS_NETWORK_STATE',
+      'android.permission.ACCESS_WIFI_STATE',
+      'android.permission.CHANGE_WIFI_MULTICAST_STATE',
     ],
     blockedPermissions: [
       'android.permission.READ_EXTERNAL_STORAGE',
@@ -166,6 +176,14 @@ const config: ExpoConfig = {
       },
     ],
     'expo-video',
+    [
+      'expo-build-properties',
+      {
+        android: {
+          usesCleartextTraffic: true,
+        },
+      },
+    ],
     [
       'react-native-android-widget',
       {

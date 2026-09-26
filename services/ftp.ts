@@ -1,23 +1,24 @@
-import { Buffer } from 'buffer';
 import { Platform } from 'react-native';
-
-import type { IListingElement } from 'ftp-ts';
+import FtpService, {
+  addProgressListener,
+  type FileInfo,
+  type ProgressInfo,
+} from '@anttech/react-native-ftp';
 
 /**
- * FTP / SFTP client for the LBXMB app.
- *
- * - FTP  → `ftp-ts` over `react-native-tcp-socket` (Metro `net`/`tls` shims)
- * - SFTP → `ssh2-sftp-client` (needs full Node crypto; consoles use FTP)
+ * FTP client for the LBXMB app via `@anttech/react-native-ftp` (native).
+ * Consoles (Multiman / webMAN / GoldHEN) expose plain FTP — SFTP is not supported.
  */
 
-export type TransferProtocol = 'ftp' | 'sftp';
+export type TransferProtocol = 'ftp';
 
 export interface FtpCredentials {
   host: string;
   port: number;
   user: string;
   password: string;
-  protocol?: TransferProtocol;
+  /** Kept for persisted profiles; always treated as FTP. */
+  protocol?: TransferProtocol | 'sftp';
 }
 
 export interface FtpEntry {
@@ -37,7 +38,8 @@ export class FtpError extends Error {
 export interface RemoteClient {
   connect(): Promise<void>;
   list(path?: string): Promise<FtpEntry[]>;
-  upload(remotePath: string, bytes: Uint8Array): Promise<void>;
+  /** Upload a local file path (file:// URI or absolute path) to remotePath. */
+  uploadFile(localUriOrPath: string, remotePath: string): Promise<void>;
   disconnect(): Promise<void>;
 }
 
@@ -58,24 +60,36 @@ function joinRemotePath(base: string, name: string): string {
   return `${base}/${name}`;
 }
 
+/** Native FTP modules expect a filesystem path, not a `file://` URI. */
+export function toNativePath(uriOrPath: string): string {
+  if (uriOrPath.startsWith('file://')) {
+    try {
+      return decodeURIComponent(uriOrPath.replace(/^file:\/\//, ''));
+    } catch {
+      return uriOrPath.replace(/^file:\/\//, '');
+    }
+  }
+  return uriOrPath;
+}
+
 function humanizeError(error: unknown, host: string, port: number): FtpError {
   if (error instanceof FtpError) return error;
   const message = error instanceof Error ? error.message : String(error);
   const lower = message.toLowerCase();
 
-  if (lower.includes('err_crypto') || lower.includes('crypto.') || lower.includes('indisponible')) {
+  if (lower.includes('linking') || lower.includes("doesn't seem to be linked")) {
     return new FtpError(
-      'SFTP indisponible sur mobile (crypto Node manquante). Utilise FTP pour Multiman / webMAN / GoldHEN.'
+      'Module FTP natif absent. Rebuild l’app (pas Expo Go) après installation de @anttech/react-native-ftp.',
     );
   }
-  if (lower.includes('econnrefused') || lower.includes('connection refused') || lower.includes('refused connection')) {
+  if (lower.includes('econnrefused') || lower.includes('connection refused') || lower.includes('refused')) {
     return new FtpError(
-      `Rien n’écoute sur ${host}:${port}. Sur la console, démarre le serveur FTP et vérifie le port.`
+      `Rien n’écoute sur ${host}:${port}. Sur la console, démarre le serveur FTP et vérifie le port.`,
     );
   }
   if (lower.includes('etimedout') || lower.includes('timed out') || lower.includes('timeout')) {
     return new FtpError(
-      `Délai dépassé vers ${host}:${port}. Vérifie que le téléphone et la console sont sur le même Wi-Fi (pas de VPN).`
+      `Délai dépassé vers ${host}:${port}. Vérifie que le téléphone et la console sont sur le même Wi-Fi (pas de VPN).`,
     );
   }
   if (
@@ -85,7 +99,7 @@ function humanizeError(error: unknown, host: string, port: number): FtpError {
     lower.includes('no route')
   ) {
     return new FtpError(
-      `Réseau injoignable (${host}). Vérifie l’IP locale et que le Wi-Fi n’isole pas les appareils.`
+      `Réseau injoignable (${host}). Vérifie l’IP locale et que le Wi-Fi n’isole pas les appareils.`,
     );
   }
   if (lower.includes('enotfound') || lower.includes('getaddrinfo') || lower.includes('address lookup')) {
@@ -100,53 +114,37 @@ function humanizeError(error: unknown, host: string, port: number): FtpError {
 
 function assertPlatform(): void {
   if (Platform.OS === 'web') {
-    throw new FtpError('Le transfert FTP/SFTP n’est pas disponible sur le web.');
+    throw new FtpError('Le transfert FTP n’est pas disponible sur le web.');
   }
 }
 
-function listingToEntries(listing: Array<IListingElement | string>, basePath: string): FtpEntry[] {
+function isDirectoryType(type: FileInfo['type']): boolean {
+  return type === 'directory' || type === 'dir';
+}
+
+function listingToEntries(listing: FileInfo[], basePath: string): FtpEntry[] {
   return listing
     .map((item) => {
-      if (typeof item === 'string') {
-        const name = item.trim();
-        if (!name || name === '.' || name === '..') return null;
-        return {
-          name,
-          path: joinRemotePath(basePath, name),
-          isDirectory: false,
-          size: 0,
-        } satisfies FtpEntry;
-      }
       const name = item.name?.trim();
       if (!name || name === '.' || name === '..') return null;
-      const type = item.type || '-';
       return {
         name,
         path: joinRemotePath(basePath, name),
-        isDirectory: type === 'd' || type === 'l',
+        isDirectory: isDirectoryType(item.type) || item.type === 'link',
         size: Number(item.size) || 0,
       } satisfies FtpEntry;
     })
     .filter((entry): entry is FtpEntry => entry !== null);
 }
 
-function setNetPreferredHost(host: string): void {
-  try {
-    // Must go through Metro's `net` alias so PASV rewrite uses the same module instance.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const net = require('net') as { setPreferredHost?: (h: string) => void };
-    net.setPreferredHost?.(host);
-  } catch {
-    // Non-fatal if the shim is unavailable (e.g. tests).
-  }
-}
-
-class FtpTsClient implements RemoteClient {
-  private client: import('ftp-ts').default | null = null;
+/** Facade kept as `FtpClient` for existing UI imports. */
+export class FtpClient implements RemoteClient {
+  private connected = false;
   private readonly host: string;
   private readonly port: number;
   private readonly user: string;
   private readonly password: string;
+  readonly protocol: TransferProtocol = 'ftp';
 
   constructor(credentials: FtpCredentials) {
     this.host = normalizeFtpHost(credentials.host);
@@ -162,169 +160,36 @@ class FtpTsClient implements RemoteClient {
       throw new FtpError('Port FTP invalide.');
     }
 
-    setNetPreferredHost(this.host);
-
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const FTP = require('ftp-ts').default as typeof import('ftp-ts').default;
-      this.client = await FTP.connect({
-        host: this.host,
-        port: this.port,
-        user: this.user,
-        password: this.password || 'anonymous@',
-        connTimeout: 12_000,
-        pasvTimeout: 12_000,
-        dataTimeout: 12_000,
-        secure: false,
-      });
-      await this.client.binary().catch(() => undefined);
+      await FtpService.setup(this.host, this.port, this.user, this.password || 'anonymous@');
+      this.connected = true;
     } catch (error) {
-      this.client = null;
+      this.connected = false;
       throw humanizeError(error, this.host, this.port);
     }
   }
 
   async list(path = '/'): Promise<FtpEntry[]> {
-    if (!this.client) throw new FtpError('Pas de connexion FTP.');
+    if (!this.connected) throw new FtpError('Pas de connexion FTP.');
     try {
-      await this.client.cwd(path);
-      const listing = await this.client.list();
-      return listingToEntries(listing, path);
+      const listing = await FtpService.listFiles(path);
+      return listingToEntries(listing ?? [], path);
     } catch (error) {
       throw humanizeError(error, this.host, this.port);
     }
   }
 
-  async upload(remotePath: string, bytes: Uint8Array): Promise<void> {
-    if (!this.client) throw new FtpError('Pas de connexion FTP.');
+  async uploadFile(localUriOrPath: string, remotePath: string): Promise<void> {
+    if (!this.connected) throw new FtpError('Pas de connexion FTP.');
     try {
-      await this.client.put(Buffer.from(bytes), remotePath);
+      await FtpService.uploadFile(toNativePath(localUriOrPath), remotePath);
     } catch (error) {
       throw humanizeError(error, this.host, this.port);
     }
   }
 
   async disconnect(): Promise<void> {
-    try {
-      this.client?.end();
-    } finally {
-      this.client = null;
-      setNetPreferredHost('');
-    }
-  }
-}
-
-class SftpClientAdapter implements RemoteClient {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private client: any = null;
-  private readonly host: string;
-  private readonly port: number;
-  private readonly user: string;
-  private readonly password: string;
-
-  constructor(credentials: FtpCredentials) {
-    this.host = normalizeFtpHost(credentials.host);
-    this.port = credentials.port;
-    this.user = credentials.user.trim() || 'anonymous';
-    this.password = credentials.password;
-  }
-
-  async connect(): Promise<void> {
-    assertPlatform();
-    if (!this.host) throw new FtpError('Indique l’adresse IP du serveur.');
-    if (!Number.isFinite(this.port) || this.port < 1 || this.port > 65535) {
-      throw new FtpError('Port SFTP invalide.');
-    }
-
-    setNetPreferredHost(this.host);
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const SftpClient = require('ssh2-sftp-client') as new () => {
-        connect: (opts: object) => Promise<void>;
-        list: (path: string) => Promise<Array<{ name: string; type: string; size: number }>>;
-        put: (input: Buffer, remote: string) => Promise<string>;
-        end: () => Promise<void>;
-      };
-      this.client = new SftpClient();
-      await this.client.connect({
-        host: this.host,
-        port: this.port,
-        username: this.user,
-        password: this.password,
-        readyTimeout: 12_000,
-      });
-    } catch (error) {
-      await this.disconnect().catch(() => undefined);
-      throw humanizeError(error, this.host, this.port);
-    }
-  }
-
-  async list(path = '/'): Promise<FtpEntry[]> {
-    if (!this.client) throw new FtpError('Pas de connexion SFTP.');
-    try {
-      const listing = await this.client.list(path);
-      return listing
-        .map((item: { name: string; type: string; size: number }) => {
-          const name = item.name?.trim();
-          if (!name || name === '.' || name === '..') return null;
-          return {
-            name,
-            path: joinRemotePath(path, name),
-            isDirectory: item.type === 'd' || item.type === 'l',
-            size: Number(item.size) || 0,
-          } satisfies FtpEntry;
-        })
-        .filter((entry: FtpEntry | null): entry is FtpEntry => entry !== null);
-    } catch (error) {
-      throw humanizeError(error, this.host, this.port);
-    }
-  }
-
-  async upload(remotePath: string, bytes: Uint8Array): Promise<void> {
-    if (!this.client) throw new FtpError('Pas de connexion SFTP.');
-    try {
-      await this.client.put(Buffer.from(bytes), remotePath);
-    } catch (error) {
-      throw humanizeError(error, this.host, this.port);
-    }
-  }
-
-  async disconnect(): Promise<void> {
-    try {
-      await this.client?.end();
-    } finally {
-      this.client = null;
-      setNetPreferredHost('');
-    }
-  }
-}
-
-/** Facade kept as `FtpClient` for existing UI imports. */
-export class FtpClient implements RemoteClient {
-  private readonly inner: RemoteClient;
-  readonly protocol: TransferProtocol;
-
-  constructor(credentials: FtpCredentials) {
-    this.protocol = credentials.protocol ?? 'ftp';
-    this.inner =
-      this.protocol === 'sftp' ? new SftpClientAdapter(credentials) : new FtpTsClient(credentials);
-  }
-
-  connect(): Promise<void> {
-    return this.inner.connect();
-  }
-
-  list(path?: string): Promise<FtpEntry[]> {
-    return this.inner.list(path);
-  }
-
-  upload(remotePath: string, bytes: Uint8Array): Promise<void> {
-    return this.inner.upload(remotePath, bytes);
-  }
-
-  disconnect(): Promise<void> {
-    return this.inner.disconnect();
+    this.connected = false;
   }
 }
 
@@ -334,3 +199,6 @@ export function formatFtpSize(bytes: number): string {
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} Go`;
 }
+
+export { addProgressListener };
+export type { ProgressInfo };

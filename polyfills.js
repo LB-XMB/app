@@ -2,7 +2,7 @@ import { Buffer } from 'buffer';
 import { Platform } from 'react-native';
 
 /**
- * Ensure Node globals exist before ftp-ts / ssh2 pull in stream/net.
+ * Ensure Node globals exist early (Buffer / process).
  * Loaded first from index.js.
  */
 if (typeof globalThis.Buffer === 'undefined') {

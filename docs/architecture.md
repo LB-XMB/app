@@ -32,9 +32,9 @@ hooks/  →  services/  →  stores/
 3. Chargement polices → `AppProviders` (Query persist + thème + `QueueBootstrap`)
 4. `Stack.Protected` : `bienvenue` (consent) → `connexion` (prompt sign-in) → app
 
-`QueueBootstrap` remet les jobs `running` orphelins en `pending` et relance les pumps DL/FTP.
+`QueueBootstrap` remet les jobs `running` orphelins en `pending` et relance les pumps DL / FTP / PKG.
 
-## Routes (état ~v1.0.9+)
+## Routes (état ~v1.0.12+)
 
 ```
 app/
@@ -44,6 +44,7 @@ app/
 │   ├── index.tsx            Accueil (stats, actus, populaires…)
 │   ├── catalogue.tsx
 │   ├── ftp.tsx              Profils FTP + file d’envoi
+│   ├── pkg.tsx              Envoi PKG LAN (protocole pkg-sender)
 │   ├── recherche.tsx
 │   └── profil.tsx
 ├── ressource/[id].tsx
@@ -88,13 +89,15 @@ par `normalize.ts`.
 | `history` | `lbxmb.history` | Téléchargements / recherches récents |
 | `downloadQueue` | `lbxmb.downloadQueue` | File DL (pending/running/done/error) |
 | `ftp` | `lbxmb.ftp` | Profils + file d’upload (mdp dans SecureStore `ftp.password.*`) |
+| `pkgSender` | `lbxmb.pkgSender` | IP console, mode PS4, file d’envoi PKG |
 | `collections` | `lbxmb.collections` | Listes locales |
 | `cataloguePrefs` | `lbxmb.cataloguePrefs` | Filtres mémorisés |
 
-## Téléchargements et FTP
+## Téléchargements, FTP et PKG
 
 - **DL** : `services/download.ts` + file `downloadQueue` (pump one-at-a-time, notifs optionnelles)
-- **FTP** : `ftp-ts` (+ stub Metro SFTP) via shims `net`/`tls` ; uploads via `ftpUploadQueue`
+- **FTP** : `@anttech/react-native-ftp` (natif) ; uploads via `ftpUploadQueue` (chemins fichiers)
+- **PKG** : `services/pkgSender/` — serveur HTTP range `:9898`, install RPI/PS5/GoldHEN (voir `docs/pkg-sender.md`)
 - Cold start : `running` → `pending` (partialize/merge + `recover*AfterCrash`)
 
 ## Cache requêtes
@@ -111,5 +114,5 @@ TanStack Query : `staleTime` 2 min ; persist sélectif fiches/guides (`queryPers
 ## Docs liées
 
 - `api.md`, `cloudflare-app-ua.md`, `qa-auth.md`
-- `deep-links.md`, `widgets.md`, `passkeys.md`, `push-backend.md`, `release.md`
+- `deep-links.md`, `widgets.md`, `pkg-sender.md`, `passkeys.md`, `push-backend.md`, `release.md`
 - `app-changelog.md` (+ miroir `services/appChangelogData.ts`)

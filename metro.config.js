@@ -22,8 +22,6 @@ const shims = {
   zlib: require.resolve('browserify-zlib'),
   path: require.resolve('path-browserify'),
   'cpu-features': path.resolve(__dirname, 'shims/empty.js'),
-  // Keep real ssh2 out of the JS bundle (Node-only); FTP path uses ftp-ts.
-  'ssh2-sftp-client': path.resolve(__dirname, 'shims/ssh2-sftp-client.js'),
 };
 
 config.resolver.extraNodeModules = {

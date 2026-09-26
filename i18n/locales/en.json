@@ -3,6 +3,7 @@
     "home": "Home",
     "catalogue": "Catalog",
     "ftp": "FTP",
+    "pkg": "PKG",
     "search": "Search",
     "profile": "Profile"
   },
@@ -54,8 +55,36 @@
     "sent": "Your report was sent to the team."
   },
   "ftp": {
-    "title": "FTP / SFTP",
+    "title": "FTP",
     "noProfile": "No profile"
+  },
+  "pkg": {
+    "title": "Send PKG",
+    "subtitle": "Install PKGs on PS4/PS5 over LAN (PKG Sender protocol)",
+    "test": "Test",
+    "testing": "Testing…",
+    "refresh": "Refresh",
+    "detect": "Detect",
+    "ps4Mode": "PS4 console (one-by-one queue)",
+    "mode": "Mode: {{mode}}",
+    "credit": "Protocol inspired by {{name}} by {{author}} (MIT)",
+    "queue": "Send queue",
+    "localFiles": "Local files",
+    "emptyTitle": "No local PKG",
+    "emptyBody": "Download a .pkg from the catalog, then send it from here.",
+    "kindPkg": "PKG",
+    "kindImage": "Disc image",
+    "ipMissingTitle": "Missing IP",
+    "ipMissingBody": "Enter your console IP, or tap Detect.",
+    "offlineTitle": "Console offline",
+    "offlineBody": "Start RPI, pkg-receiver.elf (PS5), or GoldHEN Payload Server.",
+    "testFailed": "Test failed",
+    "scanning": "Listening for UDP beacons…",
+    "scanEmpty": "No beacon",
+    "scanEmptyTitle": "Nothing found",
+    "scanEmptyBody": "Make sure the PS5 receiver is running, or type the IP manually.",
+    "scanFound": "Found {{ip}} ({{count}})",
+    "queued": "Queued: {{name}}"
   },
   "catalogue": {
     "title": "Catalog",

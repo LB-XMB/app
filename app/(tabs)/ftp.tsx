@@ -160,10 +160,9 @@ function FtpScreenBody() {
 
     const next = new FtpClient({
       host: active.host.trim(),
-      port: active.port || (active.protocol === 'sftp' ? 22 : 21),
+      port: active.port || 21,
       user: active.user.trim(),
       password,
-      protocol: active.protocol || 'ftp',
     });
 
     try {
@@ -294,7 +293,7 @@ function FtpScreenBody() {
     return (
       <Screen>
         <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
-          <Typography variant="h1">FTP / SFTP</Typography>
+          <Typography variant="h1">FTP</Typography>
         </View>
         <EmptyState
           icon={HardDrive}
@@ -312,7 +311,7 @@ function FtpScreenBody() {
       <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
         <View style={styles.headerTop}>
           <View style={styles.headerTitles}>
-            <Typography variant="h1">FTP / SFTP</Typography>
+            <Typography variant="h1">FTP</Typography>
             <Typography variant="caption" color="secondary">
               {connected
                 ? status ?? path
@@ -366,19 +365,6 @@ function FtpScreenBody() {
             placeholder="PS4 salon"
           />
 
-          <View style={styles.protocolRow}>
-            <ProtocolChip
-              label="FTP"
-              active={active.protocol !== 'sftp'}
-              onPress={() => patchActive({ protocol: 'ftp' })}
-            />
-            <ProtocolChip
-              label="SFTP"
-              active={active.protocol === 'sftp'}
-              onPress={() => patchActive({ protocol: 'sftp' })}
-            />
-          </View>
-
           <Field
             label="Adresse IP"
             value={active.host}
@@ -391,10 +377,10 @@ function FtpScreenBody() {
             value={String(active.port)}
             onChangeText={(value) =>
               patchActive({
-                port: Number(value) || (active.protocol === 'sftp' ? 22 : 21),
+                port: Number(value) || 21,
               })
             }
-            placeholder={active.protocol === 'sftp' ? '22' : '21'}
+            placeholder="21"
             keyboardType="number-pad"
           />
           <Field

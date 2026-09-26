@@ -28,6 +28,8 @@ export interface FtpUploadJob {
   remotePath: string;
   status: FtpUploadStatus;
   error: string | null;
+  /** 0–100 while running (native FTP progress). */
+  progress?: number;
   createdAt: string;
 }
 
@@ -129,14 +131,7 @@ export const useFtpStore = create<FtpState>()(
           return {
             profiles: state.profiles.map((profile) => {
               if (profile.id !== id) return profile;
-              const next = { ...profile, ...patch };
-              if (patch.protocol && patch.port == null) {
-                const previousDefault = profile.protocol === 'sftp' ? 22 : 21;
-                if (profile.port === previousDefault) {
-                  next.port = patch.protocol === 'sftp' ? 22 : 21;
-                }
-              }
-              return next;
+              return { ...profile, ...patch, protocol: 'ftp' as const };
             }),
           };
         }),
@@ -212,7 +207,7 @@ export const useFtpStore = create<FtpState>()(
           migrated.host = raw.target.host ?? '';
           migrated.port = raw.target.port ?? 21;
           migrated.user = raw.target.user ?? 'anonymous';
-          migrated.protocol = raw.target.protocol === 'sftp' ? 'sftp' : 'ftp';
+          migrated.protocol = 'ftp';
           migrated.lastPath = raw.target.lastPath || '/';
           profiles = [migrated];
           activeProfileId = migrated.id;
@@ -220,6 +215,13 @@ export const useFtpStore = create<FtpState>()(
             void saveFtpPassword(migrated.id, raw.target.password);
           }
         }
+
+        // Force FTP-only (SFTP removed with @anttech/react-native-ftp).
+        profiles = (profiles ?? []).map((p) => ({
+          ...p,
+          protocol: 'ftp' as const,
+          port: p.port === 22 ? 21 : p.port,
+        }));
 
         if (!profiles.length) {
           const seed = DEFAULT_PROFILE();

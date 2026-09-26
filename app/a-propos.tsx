@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Code2, ExternalLink, Globe, LayoutGrid, Scale, ServerCog, Sparkles } from 'lucide-react-native';
+import { Code2, ExternalLink, Globe, LayoutGrid, Package, Scale, ServerCog, Sparkles } from 'lucide-react-native';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -11,6 +11,7 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { API_BASE_URL, WEB_URLS } from '@/services/api';
 import { changelogForVersion, currentAppVersion } from '@/services/appChangelog';
+import { PKG_SENDER_CREDIT } from '@/services/pkgSender';
 import { IconBadge, List, ListSectionTitle, Screen, Sheet, Typography } from '@/ui/components';
 import { screenPadding, spacing, useColors } from '@/ui/theme';
 
@@ -69,6 +70,13 @@ export default function AboutScreen() {
                 onPress={() => setNotesOpen(true)}
               />
             ) : null}
+            <List.Item
+              title="Envoi PKG"
+              subtitle={`${PKG_SENDER_CREDIT.name} · ${PKG_SENDER_CREDIT.author} (MIT)`}
+              leading={<IconBadge icon={Package} color={colors.primary} size={30} />}
+              trailing={external}
+              onPress={() => void WebBrowser.openBrowserAsync(PKG_SENDER_CREDIT.url)}
+            />
             <List.Item
               title="Widgets"
               subtitle="Android : Stats & Populaires · iOS bientôt"

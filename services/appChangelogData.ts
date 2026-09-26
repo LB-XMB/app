@@ -1,5 +1,11 @@
 /** Keep in sync with `docs/app-changelog.md`. */
-export const APP_CHANGELOG_MD = `## 1.0.11
+export const APP_CHANGELOG_MD = `## 1.0.12
+
+- FTP natif via \`@anttech/react-native-ftp\` (SFTP retiré)
+- Envoi PKG PS4/PS5 en LAN (protocole [PKG Sender](https://github.com/Loopayeh/pkg-sender) / Loopayeh, MIT)
+- Onglet PKG : détection UDP, test console, file d’install, images homebrew
+
+## 1.0.11
 
 - Widgets Android : Stats communauté et Populaires (sélecteur d’écran d’accueil)
 - Refresh depuis l’écran Widgets / ouverture de l’app

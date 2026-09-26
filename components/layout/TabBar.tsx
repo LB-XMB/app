@@ -1,6 +1,6 @@
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { Box, HardDrive, House, Search, UserPen, type LucideIcon } from 'lucide-react-native';
+import { Box, HardDrive, House, Package, Search, UserPen, type LucideIcon } from 'lucide-react-native';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,6 +17,7 @@ const ROUTE_ICONS: Record<string, LucideIcon> = {
   index: House,
   catalogue: Box,
   ftp: HardDrive,
+  pkg: Package,
   recherche: Search,
   profil: UserPen,
 };
