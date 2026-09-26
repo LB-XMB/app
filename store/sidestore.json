@@ -14,6 +14,14 @@
       "category": "utilities",
       "versions": [
         {
+          "version": "1.0.12",
+          "date": "2026-09-26T19:28:54Z",
+          "localizedDescription": "Ajoute FTP anttech et l’envoi PKG LAN (protocole pkg-sender) en 1.0.12.",
+          "downloadURL": "https://git.lbxmb.fr/lbxmb/app/releases/download/v1.0.12/lbxmb_1.0.12_ios-unsigned.ipa",
+          "size": 20077048,
+          "minOSVersion": "16.4"
+        },
+        {
           "version": "1.0.11",
           "date": "2026-09-13T14:16:09Z",
           "localizedDescription": "Ajoute les widgets Android Stats et Populaires pour la 1.0.11.",
