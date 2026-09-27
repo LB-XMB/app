@@ -228,12 +228,11 @@ const config: ExpoConfig = {
     umamiHost: 'https://analytics.lbxmb.fr',
     umamiWebsiteId: '45efc25a-b0f4-4e86-b2a6-3f30ebb8e7a5',
     privacyPolicyUrl: 'https://lbxmb.fr/legal/rgpd',
-    // `eas.projectId` est ajouté par `eas init` / `eas build:configure`
-    // (voir docs/eas-play-store.md). Override CI : EAS_PROJECT_ID.
-    ...(process.env.EAS_PROJECT_ID
-      ? { eas: { projectId: process.env.EAS_PROJECT_ID } }
-      : {}),
+    eas: {
+      projectId: process.env.EAS_PROJECT_ID ?? 'be5e9f78-e70b-46e1-a2b7-843ae9fb3d59',
+    },
   },
+  owner: 'interverti',
 };
 
 export default config;
