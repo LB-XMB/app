@@ -1,3 +1,7 @@
+## 1.0.20
+
+- Correctif changelog embarqué : backticks `content://` échappés (build Android)
+
 ## 1.0.19
 
 - Retire le panneau Debug PKG temporaire

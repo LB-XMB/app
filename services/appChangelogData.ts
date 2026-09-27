@@ -1,8 +1,12 @@
 /** Keep in sync with `docs/app-changelog.md`. */
-export const APP_CHANGELOG_MD = `## 1.0.19
+export const APP_CHANGELOG_MD = `## 1.0.20
+
+- Correctif changelog embarqué : backticks \`content://\` échappés (build Android)
+
+## 1.0.19
 
 - Retire le panneau Debug PKG temporaire
-- Lectures SAF `content://` sérialisées (moins de Bad file descriptor sous Range paralleles)
+- Lectures SAF \`content://\` sérialisées (moins de Bad file descriptor sous Range paralleles)
 
 ## 1.0.18
 
