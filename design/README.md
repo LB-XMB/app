@@ -27,7 +27,8 @@ Tous dérivés du logo LB’XMB :
 | `assets/images/adaptive-icon.png` | 1024×1024, alpha | Avant-plan Android, logo à 60 % pour la zone sûre |
 | `assets/images/splash-icon.png` | 1024×1024, alpha | Écran de lancement, logo à 55 % du carré |
 | `assets/images/logo.png` | 640×372, alpha | Wordmark dans l’application |
-| `design/store/feature-graphic.png` | 1024×500, sans alpha | Bannière Google Play |
+| `design/store/feature-graphic.png` | 1024×500, sans alpha | Image de présentation Google Play |
+| `design/store/play-icon-512.png` | 512×512, sans alpha | Icône fiche Google Play (≤ 1 Mo) |
 
 L’icône iOS ne doit **jamais** avoir de canal alpha : le fond `#07080B` y est
 aplati. L’avant-plan adaptatif Android, lui, garde sa transparence et réserve le

@@ -58,8 +58,14 @@ Site : https://lbxmb.fr
 | 4 | Profil / favoris (sans données personnelles visibles) |
 | Éviter | Écrans d’install de dumps, titres pirates, messages « crack / bypass » |
 
-Formats usuels : téléphone 1080×1920 (ou ratios acceptés Play). Feature graphic
-déjà dans le dépôt : `design/store/feature-graphic.png` (1024×500).
+Formats usuels : téléphone 1080×1920 (ou ratios acceptés Play).
+
+Assets fiche déjà dans le dépôt :
+
+| Champ Play | Fichier | Spec |
+|---|---|---|
+| Icône de l’application | [`design/store/play-icon-512.png`](../design/store/play-icon-512.png) | 512×512 PNG ≤ 1 Mo |
+| Image de présentation | [`design/store/feature-graphic.png`](../design/store/feature-graphic.png) | 1024×500 PNG ≤ 15 Mo |
 
 ## Catégorie / tags suggérés
 
