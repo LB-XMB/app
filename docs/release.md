@@ -163,49 +163,24 @@ npx eas credentials        # certificat de distribution + profil de provisioning
 npx eas build --platform ios --profile production
 ```
 
-## Checklist EAS production-store (amorce)
+## Google Play (AAB via EAS)
 
-Avant un premier AAB Play :
-
-1. `npx eas login` + credentials Android (`eas credentials`)
-2. Keystore **unique** partagé CI sideload / EAS (documenter qui détient le `.jks`)
-3. `npx eas build --platform android --profile production-store`
-4. Remplir Data safety + captures (section « Avant une première soumission »)
-
-## APK ou AAB
-
-L’asset de release est un **APK arm64-v8a**, pensé pour l’installation directe
-depuis le site, Obtainium ou le forum (téléphones Android récents). Les très
-vieux appareils 32-bit (`armeabi-v7a`) ne sont plus ciblés par le pipeline CI,
-ce qui divise à peu près par deux le temps de compilation native. Le Play Store,
-lui, exige un bundle :
+Guide détaillé : **[eas-play-store.md](./eas-play-store.md)**  
+Textes fiche + Data safety : **[play-store-listing.md](./play-store-listing.md)**
 
 ```bash
-npx eas build --platform android --profile production-store
+eas login
+eas build --platform android --profile production-store --non-interactive
+eas submit --platform android --profile production-store --latest   # ou upload manuel
 ```
 
-Le profil `production-store` produit un `.aab` que Google découpe ensuite par
-architecture, ce qui divise à peu près par deux ce que télécharge l’utilisateur.
+L’asset Forgejo reste un **APK arm64-v8a** (sideload / Obtainium). Play exige un
+**AAB** (`production-store`). Même `applicationId` `fr.lbxmb.app` — réutiliser le
+keystore CI pour EAS.
 
-## Avant une première soumission
+## Avant une première soumission Play
 
-Le pipeline couvre la fabrication des binaires, pas la conformité des fiches
-store. Restent à préparer :
-
-- une politique de confidentialité atteignable publiquement — l’app pointe déjà
-  vers [`/legal/rgpd`](https://lbxmb.fr/legal/rgpd), à compléter d’une section
-  propre à l’application (aucun compte, statistiques optionnelles, favoris
-  stockés localement) ;
-- le questionnaire **Data safety** (Google) et les **privacy labels** (Apple) :
-  aucune donnée collectée si l’utilisateur refuse, sinon des statistiques
-  d’usage anonymes non liées à son identité ;
-- des captures d’écran par format d’appareil, plus le
-  [`design/store/feature-graphic.png`](../design/store/feature-graphic.png) pour
-  Google Play ;
-- une adresse de contact support ;
-- un test sur appareil réel iOS et Android.
-
-Point de vigilance : le sujet du modding console est examiné de près, surtout par
-Apple. La fiche doit décrire un **catalogue communautaire de ressources et de
-guides techniques**, rappeler l’absence d’affiliation avec Sony, Microsoft et
-Nintendo, et éviter tout vocabulaire évoquant le contournement de protections.
+- Privacy : [`/legal/rgpd`](https://lbxmb.fr/legal/rgpd)
+- Data safety + captures + feature graphic (`design/store/feature-graphic.png`)
+- Fiche : catalogue / guides techniques — disclaimer non affilié Sony / Microsoft /
+  Nintendo (voir play-store-listing.md)

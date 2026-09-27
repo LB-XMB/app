@@ -13,9 +13,10 @@
 </p>
 
 <p align="center">
-  Le catalogue communautaire de modding console, dans ta poche.<br>
-  Parcours les ressources et guides pour PlayStation, Xbox, Nintendo et PC,
-  télécharge tes fichiers, envoie un PKG en FTP et garde tes favoris hors ligne.
+  Catalogue communautaire de ressources et guides techniques console &amp; PC.<br>
+  Parcours les contenus pour PlayStation, Xbox, Nintendo et PC, télécharge,
+  transfère en local (FTP / PKG) vers ta console, garde tes favoris hors ligne.<br>
+  <em>Non affilié à Sony, Microsoft ni Nintendo.</em>
 </p>
 
 <p align="center">
@@ -116,10 +117,12 @@ Ensuite `npm start` suffit pour itérer.
 ### Publier
 
 ```bash
-git tag v1.0.4 && git push origin v1.0.4
+git tag v1.0.4 && git push origin v1.0.4          # APK sideload (Forgejo)
+eas build -p android --profile production-store  # AAB Google Play
 ```
 
-Détail : [`docs/release.md`](./docs/release.md).
+Détail : [`docs/release.md`](./docs/release.md), [`docs/eas-play-store.md`](./docs/eas-play-store.md),
+[`docs/play-store-listing.md`](./docs/play-store-listing.md).
 
 ### Architecture
 

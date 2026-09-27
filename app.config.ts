@@ -65,7 +65,7 @@ const config: ExpoConfig = {
       backgroundColor: '#07080B',
     },
     // Downloads: sandbox + SAF folder or share sheet — no legacy storage perms.
-    // Cleartext (LAN HTTP/FTP) is enabled via expo-build-properties.
+    // Cleartext: LAN only (FTP / HTTP PKG). See expo-build-properties + docs/eas-play-store.md.
     permissions: [
       'android.permission.INTERNET',
       'android.permission.POST_NOTIFICATIONS',
@@ -182,6 +182,9 @@ const config: ExpoConfig = {
       'expo-build-properties',
       {
         android: {
+          // Required for local FTP and HTTP Range PKG to a console on the LAN
+          // (plain HTTP to 192.168.x / link-local). HTTPS remains used for lbxmb.fr.
+          // Documented for Play Data safety / network — do not broaden further.
           usesCleartextTraffic: true,
         },
       },
@@ -224,6 +227,12 @@ const config: ExpoConfig = {
     apiBaseUrl: 'https://lbxmb.fr',
     umamiHost: 'https://analytics.lbxmb.fr',
     umamiWebsiteId: '45efc25a-b0f4-4e86-b2a6-3f30ebb8e7a5',
+    privacyPolicyUrl: 'https://lbxmb.fr/legal/rgpd',
+    // `eas.projectId` est ajouté par `eas init` / `eas build:configure`
+    // (voir docs/eas-play-store.md). Override CI : EAS_PROJECT_ID.
+    ...(process.env.EAS_PROJECT_ID
+      ? { eas: { projectId: process.env.EAS_PROJECT_ID } }
+      : {}),
   },
 };
 

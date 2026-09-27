@@ -54,8 +54,12 @@ export default function AboutScreen() {
             Version {version} · {PLATFORM_LABELS[Platform.OS] ?? Platform.OS}
           </Typography>
           <Typography variant="body" color="secondary" align="center">
-            L’application mobile du catalogue communautaire de ressources et de guides de
-            modding console.
+            Catalogue communautaire de ressources et de guides techniques pour consoles et PC
+            (homebrew / open-source documentés).
+          </Typography>
+          <Typography variant="caption" color="tertiary" align="center">
+            Non affilié à Sony, Microsoft ni Nintendo. Les transferts FTP et PKG se font sur
+            ton réseau local, vers une console déjà configurée par toi.
           </Typography>
         </View>
 

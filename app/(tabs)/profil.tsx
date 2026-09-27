@@ -170,7 +170,7 @@ export default function ProfileScreen() {
             ) : null}
             <List.Item
               title="Guides"
-              subtitle="Tous les tutoriels de modding"
+              subtitle="Guides techniques et tutoriels"
               leading={<IconBadge icon={BookOpen} color={colors.accent} size={30} />}
               trailing={chevron}
               onPress={() => router.push('/guides')}

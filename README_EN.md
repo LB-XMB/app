@@ -13,9 +13,10 @@
 </p>
 
 <p align="center">
-  The community console-modding catalogue, in your pocket.<br>
-  Browse resources and guides for PlayStation, Xbox, Nintendo and PC,
-  download files, push a PKG over FTP, and keep favourites offline.
+  Community catalogue of console &amp; PC resources and technical guides.<br>
+  Browse PlayStation, Xbox, Nintendo and PC content, download, transfer locally
+  (FTP / PKG) to your console, keep favourites offline.<br>
+  <em>Not affiliated with Sony, Microsoft, or Nintendo.</em>
 </p>
 
 <p align="center">

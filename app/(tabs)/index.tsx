@@ -82,7 +82,7 @@ export default function HomeScreen() {
           <View style={styles.headerText}>
             {kawaiiLogo ? null : <Typography variant="h1">LB’XMB</Typography>}
             <Typography variant="caption" color="secondary">
-              Ressources et guides de modding console
+              Ressources et guides techniques console
             </Typography>
           </View>
         </View>
